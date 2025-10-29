@@ -1,0 +1,81 @@
+# ============================================
+# BLOCK LIST CATEGORIES AND SITE COUNTS
+# ============================================
+# Last Updated: October 2, 2025
+#
+# This folder contains organized block lists
+# for different categories of websites.
+#
+# ============================================
+
+CATEGORY FILES:
+---------------
+
+1. social-media.txt
+   - Facebook, Instagram, Twitter/X, TikTok
+   - Snapchat, LinkedIn, Pinterest, Reddit
+   - Discord, Telegram, WhatsApp, Threads
+   - ~40+ social media platforms
+
+2. video-sites.txt
+   - YouTube, Netflix, Hulu, Disney+
+   - Twitch, Vimeo, HBO Max, Prime Video
+   - Crunchyroll, Peacock, ESPN
+   - ~40+ video streaming platforms
+
+3. gaming-sites.txt
+   - Roblox, Steam, Epic Games, Origin
+   - Online game sites (Miniclip, Poki, Y8)
+   - Console sites (PlayStation, Xbox, Nintendo)
+   - Fortnite, Minecraft, League of Legends
+   - ~60+ gaming platforms
+
+4. ai-sites.txt
+   - ChatGPT, Claude, Bard/Gemini
+   - Character.AI, Midjourney, Stable Diffusion
+   - Hugging Face, Replika, Jasper
+   - Copy.AI, QuillBot, Grammarly
+   - ~40+ AI and chatbot sites
+
+5. shopping-entertainment.txt
+   - Amazon, eBay, AliExpress, Walmart
+   - Spotify, Pandora, SoundCloud
+   - Apple Music, YouTube Music
+   - ~35+ shopping and music sites
+
+============================================
+TOTAL SITES BLOCKED: 200+
+============================================
+
+HOW TO USE:
+-----------
+1. Run AA.ps1 script
+2. The script automatically loads ALL sites from these files
+3. Choose options 8-13 to block/unblock PCs
+
+HOW TO CUSTOMIZE:
+-----------------
+1. Open any category file (e.g., social-media.txt)
+2. Add new sites (one domain per line)
+3. Lines starting with # are comments (ignored)
+4. Save the file
+5. Run the script again
+
+EXAMPLE - Adding a new site:
+----------------------------
+Open social-media.txt and add:
+mynewsite.com
+www.mynewsite.com
+
+HOW TO CREATE NEW CATEGORY:
+----------------------------
+1. Create a new .txt file (e.g., news-sites.txt)
+2. Add domains (one per line)
+3. Script will automatically load it
+
+DISABLE A CATEGORY TEMPORARILY:
+-------------------------------
+Rename the file extension:
+social-media.txt → social-media.txt.disabled
+
+============================================

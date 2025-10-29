@@ -1,0 +1,127 @@
+# Backup Hosts Files Cleanup - Feature Summary
+
+## Overview
+The enhanced web blocking system now includes automatic and manual cleanup of backup hosts files to prevent accumulation of unnecessary files on the system.
+
+## New Functionality Added
+
+### 1. Automatic Cleanup During Unblocking
+When using **options 11, 12, or 13** (Unblock Web/DNS access), the system now automatically:
+
+✅ **Removes all hosts.backup-* files** created during blocking operations
+✅ **Cleans up temporary hosts files** (hosts.tmp*)
+✅ **Removes old .bak files** if present
+✅ **Reports space freed** and number of files cleaned
+✅ **Handles cleanup errors gracefully** with warning messages
+
+### 2. Manual Cleanup Option (NEW)
+**Option 17: Clean up backup hosts files on ALL PCs**
+
+This new menu option provides:
+- **Comprehensive cleanup** of all backup files across all domain PCs
+- **Detailed reporting** showing files removed and space freed per PC
+- **Domain verification** (only affects csitlab.local computers)
+- **Size calculation** to show total space recovered
+- **Summary statistics** for all 35 PCs
+
+## Technical Implementation
+
+### Automatic Cleanup (During Unblocking)
+```powershell
+# Clean up backup hosts files
+try {
+    $backupFiles = Get-ChildItem -Path "$env:SystemRoot\System32\drivers\etc" -Filter "hosts.backup-*"
+    if ($backupFiles) {
+        $backupCount = $backupFiles.Count
+        $totalSize = ($backupFiles | Measure-Object -Property Length -Sum).Sum
+        $backupFiles | Remove-Item -Force
+        $results += "Cleaned up $backupCount backup hosts files ($([math]::Round($totalSize/1KB, 2)) KB freed)"
+    }
+    
+    # Clean temporary and .bak files too
+    Get-ChildItem -Path "$env:SystemRoot\System32\drivers\etc" -Filter "hosts.tmp*" | Remove-Item -Force
+    Get-ChildItem -Path "$env:SystemRoot\System32\drivers\etc" -Filter "hosts.bak*" | Remove-Item -Force
+}
+```
+
+### Manual Cleanup Features
+- **Domain-specific**: Only targets PCs in csitlab.local domain
+- **Comprehensive scanning**: Checks all 35 PCs (PC-1 to PC-35)
+- **Detailed reporting**: Shows per-PC cleanup results
+- **Space calculation**: Reports KB freed per computer and total
+- **Error handling**: Gracefully handles offline PCs and permission issues
+
+## File Types Cleaned
+
+### Primary Cleanup:
+- `hosts.backup-YYYYMMDD-HHMMSS` - Created during blocking operations
+- `hosts.tmp*` - Temporary files from failed operations
+- `hosts.bak*` - Legacy backup files
+
+### Cleanup Locations:
+- `C:\Windows\System32\drivers\etc\`
+
+## User Interface
+
+### Menu Changes:
+```
+15. View Current Block Lists
+16. Sync Time/Date/Timezone to ALL PCs from Server
+17. Clean up backup hosts files on ALL PCs    <- NEW OPTION
+18. Clear screen and return to menu
+19. Exit                                       <- Updated numbering
+```
+
+### Cleanup Output Example:
+```
+===== CLEANUP SUMMARY =====
+Total PCs processed: 35
+Successful cleanups: 32
+Failed cleanups: 3
+Total backup files removed: 156
+Total space freed: 2.4 KB
+
+PCs with files cleaned:
+  PC-1: 5 files (0.3 KB)
+  PC-2: 3 files (0.2 KB)
+  PC-5: 7 files (0.4 KB)
+  ...
+```
+
+## Benefits
+
+### 1. System Maintenance
+- **Prevents file accumulation** from repeated blocking/unblocking
+- **Frees disk space** (small but good practice)
+- **Reduces clutter** in system directories
+
+### 2. Operational Efficiency
+- **Automatic cleanup** requires no manual intervention
+- **Manual option** for periodic maintenance
+- **Comprehensive reporting** for audit trails
+
+### 3. System Reliability
+- **Removes orphaned files** that could interfere with operations
+- **Cleans failed operation remnants** (temp files)
+- **Maintains clean system state** for future operations
+
+## Usage Scenarios
+
+### Automatic (Recommended)
+1. Use options 11-13 to unblock web access
+2. System automatically cleans backup files
+3. View cleanup results in operation output
+
+### Manual (Maintenance)
+1. Choose option 17 from main menu
+2. System scans all domain PCs
+3. Review cleanup summary report
+4. Use periodically for maintenance
+
+## Error Handling
+- **Graceful degradation**: Cleanup failures don't stop unblocking
+- **Detailed error reporting**: Shows specific issues per PC
+- **Permission handling**: Manages access denied scenarios
+- **Offline PC handling**: Skips unreachable computers
+
+This enhancement ensures the web blocking system maintains a clean operational state while providing administrators with both automatic and manual cleanup capabilities.

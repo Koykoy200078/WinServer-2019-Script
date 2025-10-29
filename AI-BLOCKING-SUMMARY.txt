@@ -1,0 +1,106 @@
+# AI Services Internet Blocking - Configuration Summary
+
+## Overview
+The enhanced web blocking system now includes **intelligent AI service blocking** that preserves local applications while blocking their internet connectivity. This means:
+
+✅ **Applications remain installed and visible**
+❌ **AI services cannot connect to the internet**
+
+## What Gets Blocked (Internet Access Only)
+
+### 1. Windows Copilot
+- **Preserved**: Copilot button and interface remain visible in Windows
+- **Blocked**: Internet searches, cloud sync, runtime connections
+- **Registry Changes**:
+  - `DisableCopilotWebSearches = 1`
+  - `DisableCopilotCloudSync = 1`
+  - `AllowCopilotRuntime = 0`
+
+### 2. Microsoft Edge AI Features
+- **Preserved**: Edge browser remains fully functional
+- **Blocked**: Copilot sidebar, AI assistance, CDP features
+- **Registry Changes**:
+  - `CopilotCDPEnabled = 0`
+  - `CopilotPageEnabled = 0`
+  - `HubsSidebarEnabled = 0`
+  - `AIAssistanceEnabled = 0`
+
+### 3. VS Code AI Extensions
+- **Preserved**: Extensions remain installed and visible
+- **Blocked**: Internet connectivity for AI suggestions and chat
+- **Methods**:
+  - Firewall rules block VS Code from accessing AI domains
+  - Settings disabled: `github.copilot.enable = false`
+  - Network proxy set to block AI API calls
+- **Targeted Domains**: `api.openai.com`, `copilot.github.com`, `api.tabnine.com`, `server.codeium.com`
+
+### 4. Microsoft Office AI
+- **Preserved**: Office applications remain fully functional
+- **Blocked**: Copilot features, cloud AI services
+- **Registry Changes**:
+  - `DisableCopilot = 1`
+  - `ControllerConnectedServicesEnabled = 2`
+  - `EnableAIFeatures = 0`
+- **Firewall**: Office processes blocked from AI domains
+
+### 5. AI Process Firewall Rules
+- **Blocked Processes**:
+  - `Microsoft.Copilot*`
+  - `copilot.exe`
+  - `MicrosoftCopilot.exe`
+  - `WindowsCopilotRuntime.exe`
+  - `CopilotService.exe`
+- **Ports Blocked**: TCP/UDP 80, 443 (HTTP/HTTPS)
+
+## Restoration Process (Unblocking)
+
+When using the unblock function, the system:
+
+1. **Removes all firewall rules** targeting AI services
+2. **Restores registry settings** to allow internet connectivity
+3. **Re-enables VS Code AI features** in settings
+4. **Restores Office AI functionality**
+5. **Clears DNS cache** to ensure proper resolution
+
+## User Experience
+
+### During Blocking:
+- ✅ Users can still see Copilot buttons and interfaces
+- ✅ Applications (VS Code, Office, Windows) work normally
+- ❌ AI features show "no internet connection" or similar errors
+- ❌ AI suggestions, chat, and cloud features are unavailable
+
+### During Unblocking:
+- ✅ All AI services regain internet connectivity
+- ✅ Copilot and AI features become fully functional
+- ✅ No reinstallation or reconfiguration required
+
+## Technical Implementation
+
+### Blocking Layers (11 total):
+1. Hosts file blocking (2,339 websites)
+2. DNS cache flushing
+3. Browser process management
+4. Firewall rules for major sites
+5. Network adapter DNS override
+6. Proxy configuration
+7. **Windows AI services internet blocking**
+8. **AI process firewall rules**
+9. **VS Code AI internet blocking**
+10. **Office AI internet blocking**
+11. Verification and testing
+
+### Key Advantages:
+- **Non-destructive**: No extensions or apps are removed
+- **Reversible**: Full functionality restored with unblock operation
+- **Comprehensive**: Covers Windows, browsers, VS Code, and Office
+- **Domain-specific**: Only affects csitlab.local domain computers
+- **User-friendly**: Applications remain visible but non-functional
+
+## Configuration Files Updated:
+- `Main.ps1`: Enhanced with AI-specific blocking/unblocking
+- Block lists: 2,339 total sites across 6 categories
+- Registry policies for Windows, Edge, and Office
+- Firewall rules for process-specific blocking
+
+This approach satisfies the requirement to keep applications installed while preventing AI services from functioning by blocking their internet connectivity.

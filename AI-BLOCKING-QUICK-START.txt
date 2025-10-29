@@ -1,0 +1,110 @@
+========================================
+AI-ONLY BLOCKING - QUICK START GUIDE
+========================================
+
+NEW MENU OPTION 18: Block AI Sites ONLY
+========================================
+
+WHAT WAS ADDED:
+---------------
+✓ Option 18: Block AI Sites ONLY on ALL PCs
+✓ Blocks 392 AI sites from ai-sites.txt
+✓ Leaves social media, videos, games accessible
+✓ Lighter alternative to full blocking (Option 10)
+
+QUICK COMPARISON:
+-----------------
+
+Option 10 (Full Blocking):
+  • 2,339 sites blocked
+  • All categories: AI, social, video, gaming, shopping, search
+  • 11-layer protection
+  
+Option 18 (AI-Only Blocking):
+  • 392 AI sites blocked
+  • ONLY AI tools and services
+  • Hosts file + DNS flush
+
+HOW TO USE:
+-----------
+1. Run: .\Main.ps1
+2. Enter credentials
+3. Select: 18
+4. Wait for completion
+5. Verify with Option 14 (Deep Scan)
+
+WHAT GETS BLOCKED:
+------------------
+✓ ChatGPT, Claude, Gemini/Bard
+✓ AI image generators (Midjourney, DALL-E)
+✓ AI coding tools (Copilot web, Tabnine, Codeium)
+✓ AI writing tools (Jasper, Copy.ai, QuillBot)
+✓ All 392 sites from ai-sites.txt
+
+WHAT STAYS ACCESSIBLE:
+----------------------
+✓ Facebook, Instagram, Twitter (unless Option 10 used)
+✓ YouTube, TikTok, Netflix (unless Option 10 used)
+✓ Gaming sites (unless Option 10 used)
+✓ Shopping sites (unless Option 10 used)
+✓ Google Search (unless Option 10 used)
+
+TO UNBLOCK:
+-----------
+Use Option 13: "Unblock Web/DNS access on ALL PCs"
+(Removes ALL blocks including AI-only)
+
+MENU CHANGES:
+-------------
+Old Menu:
+  18. Clear screen
+  19. Exit
+
+New Menu:
+  18. Block AI Sites ONLY ← NEW!
+  19. Clear screen (moved)
+  20. Exit (moved)
+
+BACKUP FILES:
+-------------
+AI-only blocks create: hosts.backup-AI-YYYYMMDD-HHMMSS
+Full blocks create: hosts.backup-YYYYMMDD-HHMMSS
+
+VERIFICATION COMMANDS:
+----------------------
+Test AI blocking from any PC:
+
+ping openai.com
+ping claude.ai
+ping gemini.google.com
+
+Should resolve to 127.0.0.1 if blocked.
+
+Test other sites still work:
+
+ping youtube.com
+ping facebook.com
+
+Should resolve to real IPs if AI-only blocking used.
+
+TROUBLESHOOTING:
+----------------
+If AI sites still accessible:
+  1. ipconfig /flushdns
+  2. Restart browser
+  3. Check: C:\Windows\System32\drivers\etc\hosts
+  4. Look for "AI SITES ONLY" marker
+
+TECHNICAL NOTES:
+----------------
+• Requires csitlab.local domain membership
+• Uses WinRM for remote execution
+• Admin credentials required
+• Creates automatic backups
+• DNS cache cleared automatically
+• Graceful error handling
+
+========================================
+See AI-ONLY-BLOCKING-GUIDE.txt for full
+documentation and advanced usage.
+========================================

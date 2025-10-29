@@ -1,0 +1,157 @@
+===============================================
+AI-ONLY BLOCKING FEATURE - QUICK REFERENCE
+===============================================
+
+NEW FEATURE: Block AI Sites Only (Option 18)
+==============================================
+
+WHAT IT DOES:
+- Blocks ONLY AI sites from ai-sites.txt
+- Leaves other sites accessible (social media, video, gaming, shopping)
+- Applies to ALL PCs (PC-1 to PC-35) in csitlab.local domain
+
+AI SITES BLOCKED (from ai-sites.txt):
+--------------------------------------
+✓ ChatGPT & OpenAI services
+✓ Google Gemini/Bard
+✓ Anthropic Claude
+✓ Microsoft Copilot (web version)
+✓ Character.AI
+✓ Midjourney, DALL-E, Stable Diffusion
+✓ All AI coding assistants (Tabnine, Codeium, etc.)
+✓ AI writing tools (Grammarly AI, QuillBot, Jasper, etc.)
+✓ Total: 392 AI-specific sites
+
+USAGE:
+------
+1. Run Main.ps1
+2. Select Option 18: "Block AI Sites ONLY on ALL PCs"
+3. Script will:
+   ✓ Check domain membership (csitlab.local only)
+   ✓ Create backup: hosts.backup-AI-[timestamp]
+   ✓ Add AI site blocks to hosts file
+   ✓ Flush DNS cache
+   ✓ Verify blocking (tests openai.com, claude.ai, gemini.google.com)
+
+COMPARISON WITH FULL BLOCKING:
+===============================
+
+OPTION 10 (Full Web Blocking):
+- Blocks: 2,339 sites total
+  • Social Media (324 sites)
+  • Video Sites (434 sites)
+  • Gaming Sites (454 sites)
+  • AI Sites (392 sites)
+  • Shopping/Entertainment (459 sites)
+  • Search Engines (276 sites)
+- Applies: 11-layer blocking (hosts + firewall + DNS + AI services)
+
+OPTION 18 (AI-Only Blocking):
+- Blocks: 392 AI sites only
+- Keeps accessible: Social media, videos, games, shopping, search engines
+- Applies: Hosts file blocking + DNS flush
+
+USE CASES:
+==========
+
+Use Option 18 (AI-Only) when:
+✓ You want to prevent AI tool usage
+✓ Students should access research/educational sites
+✓ Social media and entertainment remain allowed
+✓ Need lighter blocking without full restrictions
+
+Use Option 10 (Full Blocking) when:
+✓ Complete internet restriction needed
+✓ Exam/test environment
+✓ Maximum productivity mode
+✓ Comprehensive distraction elimination
+
+TECHNICAL DETAILS:
+==================
+
+Backup File Naming:
+- AI-Only blocks: hosts.backup-AI-YYYYMMDD-HHMMSS
+- Full blocks: hosts.backup-YYYYMMDD-HHMMSS
+
+Block Marker in Hosts File:
+- AI-Only: "# BLOCKED BY ADMIN - AI SITES ONLY - csitlab.local domain"
+- Full: "# BLOCKED BY ADMIN - csitlab.local domain"
+
+Domain Security:
+- Both options require csitlab.local domain membership
+- Non-domain PCs are automatically skipped
+- Admin credentials required for all operations
+
+UNBLOCKING:
+===========
+To remove AI-only blocks:
+- Use Option 13: "Unblock Web/DNS access on ALL PCs"
+- This removes ALL blocking (including AI-only blocks)
+- Restores full internet access
+
+VERIFICATION:
+=============
+After applying AI-only blocking:
+1. Use Option 14 (Deep Scan) to verify blocking status
+2. Test sites manually:
+   • openai.com - Should be BLOCKED
+   • claude.ai - Should be BLOCKED
+   • youtube.com - Should be ACCESSIBLE
+   • facebook.com - Should be ACCESSIBLE
+   • google.com/search - Should be ACCESSIBLE
+
+BACKUP CLEANUP:
+===============
+- AI-only blocks create separate backup files
+- Use Option 17 to clean up old backup files
+- Removes: hosts.backup-*, hosts.tmp*, hosts.bak*
+
+TROUBLESHOOTING:
+================
+
+If AI sites still accessible:
+1. Flush DNS manually: ipconfig /flushdns
+2. Restart browser
+3. Check hosts file: C:\Windows\System32\drivers\etc\hosts
+4. Look for "AI SITES ONLY" marker
+
+If blocking too aggressive:
+1. Use Option 13 to unblock all
+2. Manually edit ai-sites.txt to remove specific sites
+3. Re-apply Option 18
+
+SCRIPT UPDATES:
+===============
+Menu Changes:
+- Option 18: Block AI Sites ONLY (NEW)
+- Option 19: Clear screen (moved from 18)
+- Option 20: Exit (moved from 19)
+
+Variables Added:
+- $aiSitesOnly: Array containing AI sites from ai-sites.txt
+
+Functions Enhanced:
+- Test-DomainMembership: Now checks for BlockAI action
+- Main switch: New case '18' for AI-only blocking
+
+BEST PRACTICES:
+===============
+1. Test on single PC first (though option applies to all)
+2. Use Deep Scan (Option 14) to verify before/after
+3. Document which blocking option is active
+4. Clean up backups regularly (Option 17)
+5. Communicate blocking policy to users
+
+SAFETY FEATURES:
+================
+✓ Domain membership verification
+✓ Automatic backup creation
+✓ Error handling and reporting
+✓ DNS cache clearing
+✓ Graceful failure handling
+✓ Detailed operation logging
+
+===============================================
+For support or issues, review Main.ps1 script
+or check WEB-BLOCKING-GUIDE.txt
+===============================================

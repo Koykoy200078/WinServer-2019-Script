@@ -1,0 +1,156 @@
+================================
+  WEB BLOCKING SYSTEM - SUMMARY
+================================
+
+✅ INSTALLATION COMPLETE!
+
+📂 FILES CREATED:
+-----------------
+Desktop/
+  ├── AA.ps1 (Updated Main Script)
+  └── BlockLists/
+      ├── social-media.txt (40+ social platforms)
+      ├── video-sites.txt (40+ video/streaming sites)
+      ├── gaming-sites.txt (60+ gaming sites)
+      ├── ai-sites.txt (40+ AI tools and chatbots)
+      ├── shopping-entertainment.txt (35+ shopping/music sites)
+      ├── README.txt
+      ├── SITE-LIST.txt (Full documentation)
+      ├── QUICK-REFERENCE.txt (Quick guide)
+      └── View-BlockLists.ps1 (List viewer)
+
+📊 TOTAL SITES BLOCKED: 200+
+
+================================
+🚀 QUICK START:
+================================
+
+1. BLOCK WEB ACCESS:
+   • Run: AA.ps1
+   • Choose option 8, 9, or 10
+   • Enter PC name or range
+   • All 200+ sites blocked instantly!
+
+2. UNBLOCK WEB ACCESS:
+   • Run: AA.ps1
+   • Choose option 11, 12, or 13
+   • Enter PC name or range
+
+3. VIEW BLOCK LISTS:
+   • Run: BlockLists\View-BlockLists.ps1
+
+================================
+✏️ CUSTOMIZE BLOCK LISTS:
+================================
+
+ADD MORE SITES:
+  1. Open BlockLists folder
+  2. Edit any .txt file (e.g., social-media.txt)
+  3. Add domains (one per line):
+     badsite.com
+     www.badsite.com
+  4. Save and run AA.ps1
+
+CREATE NEW CATEGORY:
+  1. Create new .txt in BlockLists folder
+  2. Name it (e.g., news-sites.txt)
+  3. Add domains
+  4. Script auto-loads it!
+
+================================
+📋 BLOCKED CATEGORIES:
+================================
+
+🔵 Social Media
+   Facebook, Instagram, Twitter/X, TikTok,
+   Snapchat, Discord, Reddit, LinkedIn, etc.
+
+🎬 Video Streaming
+   YouTube, Netflix, Twitch, Disney+, Hulu,
+   HBO Max, Prime Video, Crunchyroll, etc.
+
+🎮 Gaming
+   Roblox, Steam, Epic Games, Fortnite,
+   Minecraft, online game sites, etc.
+
+🤖 AI Tools
+   ChatGPT, Claude, Bard, Character.AI,
+   Midjourney, Replika, QuillBot, etc.
+
+🛒 Shopping & Music
+   Amazon, eBay, Spotify, Pandora,
+   Apple Music, YouTube Music, etc.
+
+================================
+🎯 MENU OPTIONS (AA.PS1):
+================================
+
+STATUS:
+  1. Get status of ALL PCs
+
+POWER:
+  2-7. Shutdown/Restart options
+
+WEB BLOCKING: ⭐ NEW!
+  8.  Block single PC
+  9.  Block PC range (e.g., PC-5 to PC-10)
+  10. Block ALL PCs (PC-1 to PC-35)
+  11. Unblock single PC
+  12. Unblock PC range
+  13. Unblock ALL PCs
+
+OTHER:
+  14. Clear screen
+  15. Exit
+
+================================
+💡 HOW IT WORKS:
+================================
+
+✓ Modifies Windows hosts file on target PCs
+✓ Redirects blocked sites to 127.0.0.1
+✓ Works with ALL browsers (Chrome, Edge, Firefox)
+✓ Flushes DNS cache automatically
+✓ Creates backup of hosts file
+✓ Easy to block/unblock
+
+================================
+⚠️ REQUIREMENTS:
+================================
+
+✓ Windows Server 2019 (or any Windows)
+✓ WinRM enabled on target PCs
+✓ Admin credentials
+✓ Network connectivity
+
+================================
+🛠️ TROUBLESHOOTING:
+================================
+
+Sites not blocking?
+  → Check if WinRM is working (Option 1)
+  → Verify admin credentials
+  → Ensure PCs are online
+
+Need to add more sites?
+  → Edit BlockLists/*.txt files
+  → One domain per line
+  → Include www and non-www versions
+
+Want to block only specific categories?
+  → Rename unwanted .txt files to .disabled
+  → Example: gaming-sites.txt.disabled
+
+================================
+📧 FILES TO CHECK:
+================================
+
+• BlockLists/QUICK-REFERENCE.txt → Full guide
+• BlockLists/SITE-LIST.txt → Complete site list
+• BlockLists/README.txt → Basic info
+
+================================
+
+🎉 Ready to use! Run AA.ps1 to start blocking!
+
+================================

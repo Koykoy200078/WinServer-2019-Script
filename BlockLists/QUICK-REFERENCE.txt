@@ -1,0 +1,144 @@
+# ==================================================================
+#                    BLOCK LISTS - QUICK REFERENCE
+# ==================================================================
+
+📁 FOLDER STRUCTURE:
+--------------------
+Desktop/
+  ├── AA.ps1 (Main Script)
+  └── BlockLists/
+      ├── social-media.txt (40+ sites)
+      ├── video-sites.txt (40+ sites)
+      ├── gaming-sites.txt (60+ sites)
+      ├── ai-sites.txt (40+ sites)
+      ├── shopping-entertainment.txt (35+ sites)
+      ├── README.txt (Information)
+      ├── SITE-LIST.txt (Full documentation)
+      └── View-BlockLists.ps1 (Quick viewer)
+
+# ==================================================================
+
+🎯 HOW IT WORKS:
+----------------
+1. Run AA.ps1 from Desktop
+2. Script automatically loads ALL .txt files from BlockLists folder
+3. Ignores comment lines (starting with #)
+4. Blocks all sites by redirecting to 127.0.0.1
+
+# ==================================================================
+
+✏️ HOW TO EDIT BLOCK LISTS:
+---------------------------
+
+METHOD 1 - Add individual sites:
+  1. Open the category file (e.g., social-media.txt)
+  2. Add domain at the end:
+     newsite.com
+     www.newsite.com
+  3. Save file
+  4. Run AA.ps1 again
+
+METHOD 2 - Remove sites:
+  1. Open the category file
+  2. Delete the line with unwanted domain
+  3. Save file
+
+METHOD 3 - Add comments:
+  1. Lines starting with # are ignored
+  2. Use for organization:
+     # Major platforms
+     facebook.com
+     instagram.com
+
+METHOD 4 - Disable entire category:
+  1. Rename file: social-media.txt → social-media.txt.disabled
+  2. Script will skip it
+
+# ==================================================================
+
+📋 INCLUDED CATEGORIES:
+-----------------------
+
+🔵 SOCIAL MEDIA (social-media.txt)
+   • Facebook, Instagram, Twitter/X
+   • TikTok, Snapchat, LinkedIn
+   • Discord, Reddit, Pinterest
+   • Telegram, WhatsApp, Threads
+
+🎬 VIDEO SITES (video-sites.txt)
+   • YouTube, Netflix, Disney+
+   • Twitch, Hulu, HBO Max
+   • Prime Video, Crunchyroll
+   • Vimeo, ESPN, Peacock
+
+🎮 GAMING (gaming-sites.txt)
+   • Roblox, Minecraft, Fortnite
+   • Steam, Epic Games, Origin
+   • Online game sites (Poki, Y8, Friv)
+   • Console sites (Xbox, PlayStation)
+
+🤖 AI SITES (ai-sites.txt)
+   • ChatGPT, Claude, Bard/Gemini
+   • Character.AI, Midjourney
+   • Replika, Jasper, Copy.AI
+   • QuillBot, Grammarly, Perplexity
+
+🛒 SHOPPING & MUSIC (shopping-entertainment.txt)
+   • Amazon, eBay, Walmart
+   • Spotify, Pandora, Apple Music
+   • AliExpress, Etsy, Shein
+
+# ==================================================================
+
+🛠️ ADVANCED CUSTOMIZATION:
+---------------------------
+
+Create custom category:
+  1. Create new file: custom-sites.txt
+  2. Add domains (one per line)
+  3. Script auto-loads it
+
+Example custom-sites.txt:
+  # My Custom Blocks
+  example.com
+  www.example.com
+  badsite.net
+  www.badsite.net
+
+# ==================================================================
+
+🚀 QUICK COMMANDS:
+------------------
+
+View all block lists:
+  Right-click View-BlockLists.ps1 → Run with PowerShell
+
+Count total sites:
+  (Get-ChildItem BlockLists\*.txt | Get-Content).Count
+
+Find specific site:
+  Select-String -Path BlockLists\*.txt -Pattern "facebook"
+
+# ==================================================================
+
+💡 TIPS:
+--------
+• Always include both www and non-www versions
+• Add one domain per line
+• No http:// or https:// needed
+• Comment lines start with #
+• Empty lines are ignored
+• Case-insensitive
+
+# ==================================================================
+
+📞 USAGE WITH AA.PS1:
+---------------------
+Option 8  → Block single PC
+Option 9  → Block PC range
+Option 10 → Block ALL PCs (PC-1 to PC-35)
+Option 11 → Unblock single PC
+Option 12 → Unblock PC range
+Option 13 → Unblock ALL PCs
+
+# ==================================================================

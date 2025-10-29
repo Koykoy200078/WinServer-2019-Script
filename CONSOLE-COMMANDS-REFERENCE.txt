@@ -1,0 +1,227 @@
+========================================
+CONSOLE COMMANDS REFERENCE
+========================================
+
+GROUP POLICY UPDATE (Force)
+----------------------------
+gpupdate /force
+
+Use when:
+  • After applying registry changes
+  • To refresh domain policies
+  • To force immediate policy application
+
+Expected output:
+  "Updating policy..."
+  "Computer Policy update has completed successfully"
+  "User Policy update has completed successfully"
+
+
+DNS CACHE FLUSH
+---------------
+ipconfig /flushdns
+
+Use when:
+  • After modifying hosts file
+  • After applying blocking
+  • Website resolves to wrong IP
+
+Expected output:
+  "Successfully flushed the DNS Resolver Cache"
+
+
+TEST AI SITE BLOCKING
+---------------------
+nslookup openai.com
+nslookup claude.ai  
+nslookup gemini.google.com
+nslookup chatgpt.com
+
+Expected when blocked:
+  Name:    openai.com
+  Address: 127.0.0.1
+
+Expected when NOT blocked:
+  Name:    openai.com
+  Address: <real IP address>
+
+
+VIEW/EDIT HOSTS FILE
+--------------------
+notepad C:\Windows\System32\drivers\etc\hosts
+
+Look for these markers:
+  • "# BLOCKED BY ADMIN - AI SITES ONLY" (AI-only blocking)
+  • "# BLOCKED BY ADMIN - csitlab.local domain" (Full blocking)
+
+
+RESTART DNS CLIENT SERVICE
+---------------------------
+Restart-Service -Name Dnscache -Force
+
+Use when:
+  • DNS cache flush doesn't work
+  • Persistent DNS issues
+
+
+CHECK FIREWALL RULES
+--------------------
+Get-NetFirewallRule -DisplayName "CSITLAB-*" | Select-Object DisplayName, Enabled, Action
+
+View all blocking rules created by script
+
+
+REMOVE FIREWALL RULES (Manual)
+-------------------------------
+Get-NetFirewallRule -DisplayName "CSITLAB-*" | Remove-NetFirewallRule
+
+Use with caution! Removes ALL blocking rules.
+
+
+TEST NETWORK CONNECTIVITY
+--------------------------
+Test-NetConnection -ComputerName PC-1 -Port 5985
+
+Test WinRM connectivity before running script
+
+
+CHECK DOMAIN MEMBERSHIP
+------------------------
+(Get-WmiObject -Class Win32_ComputerSystem).Domain
+
+Should return: csitlab.local
+
+
+VIEW BLOCKING STATUS (Quick)
+-----------------------------
+Get-Content C:\Windows\System32\drivers\etc\hosts | Select-String "BLOCKED"
+
+Shows all blocked entries
+
+
+COUNT BLOCKED SITES
+-------------------
+(Get-Content C:\Windows\System32\drivers\etc\hosts | Select-String "127.0.0.1" | Where-Object { $_ -notmatch "localhost" }).Count
+
+Returns number of blocked sites
+
+
+LIST BACKUP FILES
+-----------------
+Get-ChildItem C:\Windows\System32\drivers\etc\hosts.backup-* | Select-Object Name, Length, LastWriteTime
+
+Shows all backup hosts files
+
+
+RESTORE FROM BACKUP (Manual)
+-----------------------------
+Copy-Item "C:\Windows\System32\drivers\etc\hosts.backup-YYYYMMDD-HHMMSS" -Destination "C:\Windows\System32\drivers\etc\hosts" -Force
+
+Replace YYYYMMDD-HHMMSS with actual backup timestamp
+
+
+REMOTE COMMAND EXECUTION
+-------------------------
+Invoke-Command -ComputerName PC-1 -Credential $cred -ScriptBlock { ipconfig /flushdns }
+
+Execute commands on remote PC
+
+
+CHECK AI BLOCKING ON REMOTE PC
+-------------------------------
+Invoke-Command -ComputerName PC-1 -Credential $cred -ScriptBlock {
+    Get-Content C:\Windows\System32\drivers\etc\hosts | Select-String "AI SITES ONLY"
+}
+
+
+BULK FLUSH DNS (ALL PCs)
+-------------------------
+1..35 | ForEach-Object {
+    $pc = "PC-$_"
+    Invoke-Command -ComputerName $pc -Credential $cred -ScriptBlock {
+        ipconfig /flushdns
+    } -ErrorAction SilentlyContinue
+}
+
+
+MAIN SCRIPT COMMANDS
+--------------------
+# Run the script
+.\Main.ps1
+
+# Run with execution policy bypass (if needed)
+PowerShell -ExecutionPolicy Bypass -File .\Main.ps1
+
+
+VERIFICATION WORKFLOW
+---------------------
+1. Apply AI blocking (Option 18)
+2. Run gpupdate /force (on target PC)
+3. Run ipconfig /flushdns (on target PC)
+4. Test: nslookup openai.com
+5. Verify: Should return 127.0.0.1
+6. Deep Scan (Option 14) for full report
+
+
+TROUBLESHOOTING SEQUENCE
+------------------------
+If blocking doesn't work:
+
+1. ipconfig /flushdns
+2. Restart-Service -Name Dnscache -Force
+3. Close and reopen browser
+4. Check hosts file for entries
+5. Verify domain membership
+6. Check WinRM connectivity
+7. Re-apply blocking
+
+
+EMERGENCY UNBLOCK (Local PC)
+-----------------------------
+# Quick restore original hosts
+$hostsPath = "C:\Windows\System32\drivers\etc\hosts"
+$defaultContent = @"
+# Copyright (c) 1993-2009 Microsoft Corp.
+#
+# This is a sample HOSTS file used by Microsoft TCP/IP for Windows.
+#
+127.0.0.1       localhost
+::1             localhost
+"@
+$defaultContent | Out-File -FilePath $hostsPath -Encoding ASCII -Force
+ipconfig /flushdns
+
+
+PERFORMANCE CHECK
+-----------------
+# Check if blocking is causing slowdowns
+Measure-Command { 
+    1..10 | ForEach-Object { 
+        Resolve-DnsName facebook.com 
+    } 
+}
+
+Should complete quickly (< 1 second)
+
+
+SCRIPT STATUS CHECK
+-------------------
+# List all menu options
+Get-Content .\Main.ps1 | Select-String "Write-Host.*[0-9]+\."
+
+Shows all menu options and current numbering
+
+
+========================================
+QUICK REFERENCE: AI-ONLY BLOCKING
+========================================
+
+Apply:    Run Main.ps1 → Option 18
+Verify:   nslookup openai.com (should be 127.0.0.1)
+Unblock:  Run Main.ps1 → Option 13
+Check:    notepad C:\Windows\System32\drivers\etc\hosts
+
+========================================
+For automated execution, use Main.ps1
+For manual operations, use commands above
+========================================
