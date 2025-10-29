@@ -19,9 +19,11 @@
     Write-Host "16. Sync Time/Date/Timezone to ALL PCs from Server"
     Write-Host "17. Clean up backup hosts files on ALL PCs"
     Write-Host "18. Block AI Sites ONLY on ALL PCs (PC-1 to PC-35)" -ForegroundColor Yellow
-    Write-Host "19. Export MySQL Databases from ALL PCs" -ForegroundColor Cyan
-    Write-Host "20. Clear screen and return to menu"
-    Write-Host "21. Exit"
+    Write-Host "19. Export MySQL Database from a single PC" -ForegroundColor Cyan
+    Write-Host "20. Export MySQL Databases from a range of PCs" -ForegroundColor Cyan
+    Write-Host "21. Export MySQL Databases from ALL PCs" -ForegroundColor Cyan
+    Write-Host "22. Clear screen and return to menu"
+    Write-Host "23. Exit"
     Write-Host "==============================" -ForegroundColor Cyan
 }
 
@@ -242,8 +244,19 @@ function Sync-TimeToAllPCs {
 }
 
 function Export-MySQLDatabases {
-    Write-Host "===== MYSQL DATABASE EXPORT (ALL PCs) =====" -ForegroundColor Cyan
-    Write-Host "This will export all MySQL databases from PC-1 to PC-35" -ForegroundColor Yellow
+    param(
+        [Parameter(Mandatory=$true)]
+        [array]$Targets,
+        [Parameter(Mandatory=$false)]
+        [string]$ExportType = "ALL"
+    )
+    
+    Write-Host "===== MYSQL DATABASE EXPORT ($ExportType) =====" -ForegroundColor Cyan
+    if ($Targets.Count -eq 1) {
+        Write-Host "Exporting MySQL databases from: $($Targets[0])" -ForegroundColor Yellow
+    } else {
+        Write-Host "Exporting MySQL databases from $($Targets.Count) PCs" -ForegroundColor Yellow
+    }
     Write-Host ""
     
     # Prompt for MySQL credentials
@@ -258,14 +271,12 @@ function Export-MySQLDatabases {
     New-Item -ItemType Directory -Path $exportFolder -Force | Out-Null
     Write-Host "Export folder created: $exportFolder" -ForegroundColor Green
     Write-Host ""
-    
-    $targets = foreach ($i in 1..35) { "PC-$i" }
     $exportResults = @()
     $successCount = 0
     $failCount = 0
     $totalDatabases = 0
     
-    foreach ($pc in $targets) {
+    foreach ($pc in $Targets) {
         Write-Host "Exporting databases from $pc..." -ForegroundColor Gray
         try {
             if (Test-WSMan -ComputerName $pc -ErrorAction Stop) {
@@ -367,15 +378,27 @@ function Export-MySQLDatabases {
                         $pcFolder = Join-Path $exportFolder $pc
                         New-Item -ItemType Directory -Path $pcFolder -Force | Out-Null
                         
-                        # Copy files from remote PC to server
+                        # Copy files from remote PC to server using Invoke-Command
                         foreach ($exportedFile in $result.ExportedFiles) {
-                            $remotePath = "\\$pc\C$" + ($exportedFile.FilePath -replace "C:", "")
                             $localPath = Join-Path $pcFolder (Split-Path $exportedFile.FilePath -Leaf)
                             
                             try {
-                                Copy-Item -Path $remotePath -Destination $localPath -Force -ErrorAction Stop
-                                $fileSizeKB = [math]::Round($exportedFile.FileSize / 1KB, 2)
-                                Write-Host "  ✓ $($exportedFile.Database): $fileSizeKB KB" -ForegroundColor Green
+                                # Read file content from remote PC and write to local server
+                                $fileContent = Invoke-Command -ComputerName $pc -Credential $cred -ArgumentList $exportedFile.FilePath -ScriptBlock {
+                                    param($filePath)
+                                    if (Test-Path $filePath) {
+                                        return Get-Content -Path $filePath -Raw -Encoding UTF8
+                                    }
+                                    return $null
+                                } -ErrorAction Stop
+                                
+                                if ($fileContent) {
+                                    $fileContent | Out-File -FilePath $localPath -Encoding UTF8 -Force
+                                    $fileSizeKB = [math]::Round($exportedFile.FileSize / 1KB, 2)
+                                    Write-Host "  ✓ $($exportedFile.Database): $fileSizeKB KB" -ForegroundColor Green
+                                } else {
+                                    Write-Host "  ✗ Failed to copy $($exportedFile.Database): File not found or empty" -ForegroundColor Red
+                                }
                             }
                             catch {
                                 Write-Host "  ✗ Failed to copy $($exportedFile.Database): $($_.Exception.Message)" -ForegroundColor Red
@@ -384,8 +407,12 @@ function Export-MySQLDatabases {
                         
                         # Clean up remote temporary folder
                         try {
-                            $remoteTempPath = "\\$pc\C$" + ($result.TempFolder -replace "C:", "")
-                            Remove-Item -Path $remoteTempPath -Recurse -Force -ErrorAction SilentlyContinue
+                            Invoke-Command -ComputerName $pc -Credential $cred -ArgumentList $result.TempFolder -ScriptBlock {
+                                param($tempFolder)
+                                if (Test-Path $tempFolder) {
+                                    Remove-Item -Path $tempFolder -Recurse -Force -ErrorAction SilentlyContinue
+                                }
+                            } -ErrorAction SilentlyContinue
                         } catch {}
                         
                         $exportResults += $result
@@ -409,7 +436,7 @@ function Export-MySQLDatabases {
     # Summary Report
     Write-Host ""
     Write-Host "===== MYSQL EXPORT SUMMARY =====" -ForegroundColor Cyan
-    Write-Host "Total PCs processed: 35" -ForegroundColor White
+    Write-Host "Total PCs processed: $($Targets.Count)" -ForegroundColor White
     Write-Host "Successful exports: $successCount" -ForegroundColor Green
     Write-Host "Failed exports: $failCount" -ForegroundColor Red
     Write-Host "Total databases exported: $totalDatabases" -ForegroundColor Yellow
@@ -843,12 +870,24 @@ do {
             $action = "BlockAI"
         }
         '19' {
-            Export-MySQLDatabases
+            $pc = Read-Host "Enter the PC name (e.g., PC-1)"
+            $targets = @($pc)
+            Export-MySQLDatabases -Targets $targets -ExportType "Single PC: $pc"
         }
         '20' {
-            continue  # Just clears and redraws menu
+            $start = Read-Host "Enter start number (e.g., 5)"
+            $end   = Read-Host "Enter end number (e.g., 10)"
+            $targets = foreach ($i in $start..$end) { "PC-$i" }
+            Export-MySQLDatabases -Targets $targets -ExportType "Range: PC-$start to PC-$end"
         }
         '21' {
+            $targets = foreach ($i in 1..35) { "PC-$i" }
+            Export-MySQLDatabases -Targets $targets -ExportType "ALL PCs"
+        }
+        '22' {
+            continue  # Just clears and redraws menu
+        }
+        '23' {
             Write-Host "Exiting..." -ForegroundColor Yellow
             break
         }
@@ -1796,4 +1835,4 @@ do {
         Pause
     }
 
-} while ($choice -ne '21')
+} while ($choice -ne '23')
