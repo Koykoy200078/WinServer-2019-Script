@@ -1,0 +1,62 @@
+# Quick Reference: Dynamic Domain Detection
+
+## What Changed?
+**Before**: Domain hardcoded as "csitlab.local"
+**After**: Domain auto-detected from your system
+
+## How to Use
+
+### On Domain-Joined Computer
+```powershell
+.\Main.ps1
+```
+✅ Domain detected automatically
+✅ No manual input needed
+
+### On Workgroup/Standalone Computer
+```powershell
+.\Main.ps1
+# When prompted:
+Domain name (e.g., csitlab.local): [enter your domain]
+```
+
+## What You'll See
+
+### Startup Banner
+```
+===== DOMAIN-SPECIFIC WEB BLOCKING SYSTEM =====
+Detected Domain: [your-domain-name]
+
+Please enter admin credentials for domain PCs:
+```
+
+### During Operations
+```
+IMPORTANT: Operations will only apply to PCs in the '[your-domain]' domain!
+```
+
+## Benefits
+✅ Works with ANY domain
+✅ No code editing required
+✅ Portable across environments
+✅ Auto-detects or prompts for input
+
+## Verify Domain Detection
+Check the startup banner to confirm:
+- Shows "Detected Domain: [your-domain]"
+- All operations reference your domain
+- Domain checks use detected value
+
+## Troubleshooting
+
+**Issue**: Wrong domain detected
+**Solution**: Script uses your computer's domain. Run from correct domain-joined computer.
+
+**Issue**: Prompted for domain manually
+**Solution**: Your computer is not domain-joined. Enter target domain when prompted.
+
+**Issue**: Operations skip all PCs
+**Solution**: Target PCs must be in the same domain as detected/entered.
+
+---
+**Quick Tip**: The detected domain is displayed at startup - verify it's correct before proceeding!
