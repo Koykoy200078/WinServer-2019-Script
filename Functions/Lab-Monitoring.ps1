@@ -824,29 +824,21 @@ function Start-RealtimeMonitor {
             
             Write-Host ""
             Write-Host "=============================================" -ForegroundColor Cyan
-            Write-Host "" # Empty line for countdown
             
-            # Countdown with live updates - move cursor up to overwrite the countdown line
-            $countdownLine = [Console]::CursorTop - 1
-            
+            # Countdown with screen refresh every second
             for ($i = $RefreshInterval; $i -gt 0; $i--) {
                 # Calculate current elapsed time
                 $currentElapsed = (Get-Date) - $startTime
                 $elapsedStr = $currentElapsed.ToString('hh\:mm\:ss')
                 
-                # Move cursor to countdown line and clear it
-                [Console]::SetCursorPosition(0, $countdownLine)
-                Write-Host (" " * 120) -NoNewline  # Clear the line
-                [Console]::SetCursorPosition(0, $countdownLine)
+                # Show countdown status
+                Write-Host "`rNext scan in $i seconds... | Total Elapsed: $elapsedStr | Press Ctrl+C to stop" -ForegroundColor Yellow -NoNewline
                 
-                # Show countdown with updated elapsed time
-                Write-Host "Next scan in $i seconds... | Elapsed: $elapsedStr | Press Ctrl+C to stop" -ForegroundColor Yellow -NoNewline
+                # Sleep for 1 second
                 Start-Sleep -Seconds 1
             }
             
-            # Clear the countdown line before next iteration
-            [Console]::SetCursorPosition(0, $countdownLine)
-            Write-Host (" " * 120)
+            Write-Host ""  # New line after countdown completes
         }
     }
     catch [System.Management.Automation.PipelineStoppedException] {
