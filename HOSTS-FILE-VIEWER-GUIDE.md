@@ -1,9 +1,11 @@
 # Hosts File Viewer Guide
 
 ## Overview
+
 The **View All PC Hosts Files** feature (Option 19) allows you to retrieve and view the hosts files from all domain PCs in one operation. This is useful for auditing, verification, and troubleshooting web blocking configurations.
 
 ## Menu Location
+
 ```
 █ UTILITIES
   17. Sync Time/Date/Timezone to ALL PCs from Server
@@ -17,7 +19,9 @@ The **View All PC Hosts Files** feature (Option 19) allows you to retrieve and v
 ## How It Works
 
 ### Step 1: Retrieve Hosts Files
+
 When you select option 19, the system will:
+
 1. Connect to each PC (PC-1 through PC-35)
 2. Verify domain membership
 3. Retrieve the hosts file from `C:\Windows\System32\drivers\etc\hosts`
@@ -28,6 +32,7 @@ When you select option 19, the system will:
    - Full file content
 
 ### Step 2: Summary Display
+
 You'll see a summary table like this:
 
 ```
@@ -48,12 +53,14 @@ PC-5          | Found     | 145   | 120     | Yes
 ```
 
 **Legend:**
+
 - **Status**: Whether the hosts file exists
 - **Lines**: Total number of lines in the file
 - **Blocked**: Number of site blocking entries
 - **Marker**: Whether the file contains a "BLOCKED BY" comment marker
 
 **Color Coding:**
+
 - 🔵 **Cyan**: PCs with blocked entries
 - ⚪ **White**: PCs with hosts file but no blocks
 - ⚫ **Dark Gray**: PCs with missing hosts file
@@ -61,6 +68,7 @@ PC-5          | Found     | 145   | 120     | Yes
 ### Step 3: View Detailed Content (Optional)
 
 After the summary, you'll be asked:
+
 ```
 Do you want to view detailed hosts file content? (y/n)
 ```
@@ -68,6 +76,7 @@ Do you want to view detailed hosts file content? (y/n)
 If you answer **Y**, you get three options:
 
 #### Option 1: View Specific PC
+
 ```
 Options:
   1. View specific PC
@@ -79,6 +88,7 @@ Enter PC name (e.g., PC-1): PC-5
 ```
 
 **Output:**
+
 ```
 ===== HOSTS FILE: PC-5 =====
 Total Lines: 145
@@ -100,17 +110,20 @@ Content:
 ```
 
 **Color Coding in Content:**
+
 - 🟢 **Dark Green**: Comment lines (starting with #)
 - 🟡 **Yellow**: Blocked site entries
 - ⚪ **Gray**: Standard localhost entries
 - ⚪ **White**: Other entries
 
 #### Option 2: View PCs with Blocked Entries Only
+
 ```
 Select option (1-3): 2
 ```
 
 Shows detailed blocked entries for all PCs that have active blocking:
+
 ```
 ===== HOSTS FILE: PC-1 =====
 Total Lines: 145
@@ -131,6 +144,7 @@ Blocked Entries Only:
 ```
 
 #### Option 3: View All PCs
+
 ```
 Select option (1-3): 3
 ```
@@ -140,32 +154,42 @@ Shows complete hosts file content for **all** PCs, including those without block
 ## Use Cases
 
 ### 1. Verification After Blocking
+
 After running web blocking on all PCs, use this feature to verify:
+
 - Which PCs successfully received the blocking rules
 - How many sites are blocked on each PC
 - Whether the blocking markers are present
 
 ### 2. Audit and Compliance
+
 Check which PCs have:
+
 - Active web blocking
 - Custom hosts file modifications
 - Missing or corrupted hosts files
 
 ### 3. Troubleshooting
+
 If a PC isn't blocking sites properly:
+
 1. View its hosts file
 2. Check if blocked entries exist
 3. Verify the marker is present
 4. Compare with working PCs
 
 ### 4. Cleanup Verification
+
 After running cleanup (option 18), verify:
+
 - No backup files remain
 - Hosts files are in clean state
 - Only intended blocks remain
 
 ### 5. Pre-Unblock Check
+
 Before unblocking, see exactly what will be removed:
+
 - View current blocked entries
 - Count total blocks per PC
 - Identify which PCs need unblocking
@@ -173,6 +197,7 @@ Before unblocking, see exactly what will be removed:
 ## Examples
 
 ### Example 1: Quick Check
+
 ```
 Enter your choice (1-24): 19
 
@@ -184,9 +209,11 @@ Checking PC-2...
 
 Do you want to view detailed hosts file content? (y/n): n
 ```
-*Result: Quick summary only, no detailed viewing*
+
+_Result: Quick summary only, no detailed viewing_
 
 ### Example 2: Verify Specific PC
+
 ```
 Enter your choice (1-24): 19
 [Summary displayed]
@@ -213,9 +240,11 @@ Content:
 ::1             localhost
 -------------------------------------------
 ```
-*Result: PC-10 has no blocking active*
+
+_Result: PC-10 has no blocking active_
 
 ### Example 3: Audit All Blocked PCs
+
 ```
 Enter your choice (1-24): 19
 [Summary displayed]
@@ -231,7 +260,8 @@ Select option (1-3): 2
 
 [Shows all PCs with active blocking and their blocked entries]
 ```
-*Result: See which PCs have blocking and what's blocked*
+
+_Result: See which PCs have blocking and what's blocked_
 
 ## Performance Notes
 
@@ -250,14 +280,18 @@ Select option (1-3): 2
 ## Tips
 
 ### Tip 1: Save Output to File
+
 You can save the console output:
+
 1. Right-click PowerShell window title
 2. Edit → Select All
 3. Press Enter to copy
 4. Paste into a text editor
 
 ### Tip 2: Combine with Other Features
+
 Workflow example:
+
 1. Option 10 - Block all PCs
 2. Option 19 - View all hosts files (verify blocking)
 3. Option 14 - Deep scan (verify functionality)
@@ -265,27 +299,31 @@ Workflow example:
 5. Option 19 - View all hosts files (verify cleanup)
 
 ### Tip 3: Regular Audits
+
 Run this weekly to:
+
 - Ensure blocking is maintained
 - Detect unauthorized changes
 - Verify consistency across PCs
 
 ### Tip 4: Focus on Problem PCs
+
 Use Option 1 (view specific PC) when:
+
 - A user reports blocking issues
 - A PC isn't blocking properly
 - Need to verify a specific configuration
 
 ## Comparison with Deep Scan (Option 14)
 
-| Feature | View Hosts Files (19) | Deep Scan (14) |
-|---------|----------------------|----------------|
-| Shows hosts file content | ✅ Yes | ❌ No |
-| Shows actual blocked sites | ✅ Yes | ✅ Yes |
-| Shows firewall rules | ❌ No | ✅ Yes |
-| Shows DNS cache | ❌ No | ✅ Yes |
-| Full file content | ✅ Yes | ❌ No |
-| Export capability | ❌ No | ❌ No |
+| Feature                    | View Hosts Files (19) | Deep Scan (14) |
+| -------------------------- | --------------------- | -------------- |
+| Shows hosts file content   | ✅ Yes                | ❌ No          |
+| Shows actual blocked sites | ✅ Yes                | ✅ Yes         |
+| Shows firewall rules       | ❌ No                 | ✅ Yes         |
+| Shows DNS cache            | ❌ No                 | ✅ Yes         |
+| Full file content          | ✅ Yes                | ❌ No          |
+| Export capability          | ❌ No                 | ❌ No          |
 
 **Use Both For**: Complete visibility into blocking configuration
 
@@ -299,6 +337,7 @@ Use Option 1 (view specific PC) when:
 ---
 
 **Quick Reference:**
+
 - Menu: Option **19**
 - Function: `Show-AllHostsFiles`
 - Module: `Functions/Utilities.ps1`

@@ -1,6 +1,7 @@
 # PC Management System - Modular Architecture
 
 ## Overview
+
 This PC Management System has been refactored into a modular architecture for better organization, maintainability, and scalability.
 
 ## Project Structure
@@ -42,6 +43,7 @@ WinServer-2019-Script/
 ## Module Descriptions
 
 ### Main.ps1
+
 - **Purpose**: Entry point and menu orchestration
 - **Responsibilities**:
   - Load all function modules
@@ -51,22 +53,26 @@ WinServer-2019-Script/
   - Manage credentials
 
 ### Functions/Helpers.ps1
+
 - **Test-DomainMembership**: Check if PC is in csitlab.local domain
 - **Get-BlockingStatus**: Check current blocking status on a PC
 
 ### Functions/PC-Management.ps1
+
 - **Get-AllPCStatus**: Get status of all PCs (online/offline, time, timezone)
 - **Invoke-PCShutdown**: Shutdown single or multiple PCs
 - **Invoke-PCRestart**: Restart single or multiple PCs
 - **Invoke-DeepScan**: Deep scan of all PCs for blocking status
 
 ### Functions/Web-Blocking.ps1
+
 - **Invoke-WebBlocking**: Block web access on PCs (hosts file + DNS + firewall)
 - **Invoke-WebUnblocking**: Remove web blocking from PCs
 - **Invoke-AIBlocking**: Block AI sites only (preserves other sites)
 - **Show-BlockLists**: Display current block lists with categorization
 
 ### Functions/Utilities.ps1
+
 - **Sync-TimeToAllPCs**: Synchronize time/date/timezone from server to all PCs
 - **Invoke-BackupCleanup**: Clean up old backup hosts files
 - **Export-MySQLDatabases**: Export MySQL databases from remote PCs
@@ -74,11 +80,13 @@ WinServer-2019-Script/
 ## Menu Categories
 
 ### 🟢 PC MANAGEMENT (Options 1-7)
+
 - PC status checking
 - Shutdown operations (single, range, all)
 - Restart operations (single, range, all)
 
 ### 🟡 WEB BLOCKING (Options 8-16)
+
 - Web access blocking (single, range, all)
 - Web access unblocking (single, range, all)
 - Deep scan for blocking status
@@ -86,11 +94,13 @@ WinServer-2019-Script/
 - AI-only blocking
 
 ### 🟣 UTILITIES (Options 17-21)
+
 - Time synchronization
 - Backup file cleanup
 - MySQL database export
 
 ### ⚫ SYSTEM (Options 22-23)
+
 - Clear screen
 - Exit
 
@@ -106,12 +116,14 @@ WinServer-2019-Script/
 ## Usage
 
 ### Running the Main Script
+
 ```powershell
 cd d:\Projects\WinServer-2019-Script
 .\Main.ps1
 ```
 
 ### Importing Specific Modules
+
 ```powershell
 # Import only the helpers
 Import-Module .\Functions\Helpers.ps1
@@ -131,6 +143,7 @@ Test-DomainMembership -ComputerName "PC-1"
 4. **Update Main.ps1** to call the new function
 
 Example:
+
 ```powershell
 # In Functions/PC-Management.ps1
 function Get-PCHardwareInfo {
@@ -151,7 +164,7 @@ Export-ModuleMember -Function Get-AllPCStatus, Invoke-PCShutdown, Invoke-PCResta
 
 ## Domain Restrictions
 
-All operations **ONLY** affect PCs that are members of the **csitlab.local** domain. 
+All operations **ONLY** affect PCs that are members of the **csitlab.local** domain.
 PCs not in this domain will be automatically skipped with a warning message.
 
 ## Notes
@@ -165,6 +178,7 @@ PCs not in this domain will be automatically skipped with a warning message.
 ## Troubleshooting
 
 If you encounter module loading errors:
+
 ```powershell
 # Ensure execution policy allows scripts
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
@@ -179,6 +193,7 @@ Import-Module .\Functions\Utilities.ps1 -Force
 ## Version History
 
 - **v2.0** - Modular architecture implementation
+
   - Separated functions into categorized modules
   - Improved menu organization
   - Enhanced code maintainability

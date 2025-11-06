@@ -3,10 +3,13 @@
 ## What Was Fixed
 
 ### Problem
+
 When selecting **Option 3** ("View all PCs including empty"), the content inside the hosts files was not displaying.
 
 ### Root Cause
+
 The code was iterating through `$hostsResults` but wasn't:
+
 1. Checking if content actually exists before trying to display it
 2. Handling empty or null content arrays properly
 3. Showing clear messages when files are missing or empty
@@ -14,6 +17,7 @@ The code was iterating through `$hostsResults` but wasn't:
 ### Solution Applied
 
 #### 1. Option 3 - Enhanced with Content Validation
+
 ```powershell
 '3' {
     foreach ($pcResult in $hostsResults) {
@@ -22,7 +26,7 @@ The code was iterating through `$hostsResults` but wasn't:
             Write-Host "Status: File not found or PC offline" -ForegroundColor Red
             continue
         }
-        
+
         # Check if Content property exists and has data
         if ($pcResult.Content -and $pcResult.Content.Count -gt 0) {
             # Display each line with color coding
@@ -34,20 +38,24 @@ The code was iterating through `$hostsResults` but wasn't:
 ```
 
 #### 2. Option 1 - Added Content Check
+
 Now displays `(Empty file or no content)` if the Content array is null or empty.
 
 #### 3. Option 2 - Added Multiple Checks
+
 - Checks if any PCs with blocks exist
 - Validates Content property exists
 - Shows message if blocked lines array is empty
 - Displays `(No content available)` if needed
 
 #### 4. Fixed PSScriptAnalyzer Warning
+
 Changed `($markerLine -ne $null)` to `($null -ne $markerLine)` for PowerShell best practices.
 
 ## Testing Steps
 
 ### Test Case 1: View All PCs (Option 3)
+
 ```
 1. Run Main.ps1
 2. Enter credentials
@@ -59,6 +67,7 @@ Changed `($markerLine -ne $null)` to `($null -ne $markerLine)` for PowerShell be
 ```
 
 **Expected Output:**
+
 ```
 ===== HOSTS FILE: PC-1 =====
 Total Lines: 145
@@ -82,6 +91,7 @@ Content:
 ```
 
 ### Test Case 2: PC with Empty Hosts File
+
 ```
 If a PC has an empty or minimal hosts file:
 
@@ -97,6 +107,7 @@ Content:
 ```
 
 ### Test Case 3: Offline PC
+
 ```
 ===== HOSTS FILE: PC-X =====
 Status: File not found or PC offline
@@ -104,6 +115,7 @@ Status: File not found or PC offline
 ```
 
 ### Test Case 4: View Specific PC (Option 1)
+
 ```
 1. Select option 19
 2. Answer: y
@@ -113,6 +125,7 @@ Status: File not found or PC offline
 ```
 
 ### Test Case 5: View PCs with Blocks (Option 2)
+
 ```
 1. Select option 19
 2. Answer: y
@@ -121,6 +134,7 @@ Status: File not found or PC offline
 ```
 
 **If no blocks exist:**
+
 ```
 No PCs found with blocked entries.
 ```
@@ -128,17 +142,20 @@ No PCs found with blocked entries.
 ## Color Coding Reference
 
 ### In Content Display:
+
 - 🟢 **Dark Green**: Comment lines (# ...)
 - 🟡 **Yellow**: Blocked site entries (127.0.0.1 site.com)
 - ⚪ **Gray**: Standard localhost entries
 - ⚪ **White**: Other entries
 
 ### In Summary Table:
+
 - 🔵 **Cyan**: PCs with blocked entries
 - ⚪ **White**: PCs with hosts file but no blocks
 - ⚫ **Dark Gray**: PCs with missing hosts file
 
 ### In Headers:
+
 - 🔵 **Cyan**: PC name headers
 - 🔴 **Red**: Error/missing file status
 - 🟡 **Yellow**: Marker information
@@ -159,13 +176,17 @@ After running the fix, verify:
 ## Common Issues & Solutions
 
 ### Issue: Still not showing content
+
 **Solution**: Check that `$pcResult.Content` property is being populated during retrieval. The Invoke-Command must successfully return the content array.
 
 ### Issue: Content shows as "Empty" but file has data
+
 **Solution**: Check if the Content property is being serialized correctly across the remote session.
 
 ### Issue: Too much output scrolls past
-**Solution**: 
+
+**Solution**:
+
 - PowerShell automatically uses `more` for long output
 - Press Space to continue
 - Or right-click → Edit → Select All → Copy to save to file
@@ -179,6 +200,7 @@ After running the fix, verify:
 ## What's Different Now
 
 ### Before Fix:
+
 ```
 Select option (1-3): 3
 
@@ -186,6 +208,7 @@ Select option (1-3): 3
 ```
 
 ### After Fix:
+
 ```
 Select option (1-3): 3
 
@@ -215,7 +238,7 @@ Content:
 ✅ **Improved**: Better error handling for missing/empty files  
 ✅ **Enhanced**: Clear messages when no content available  
 ✅ **Optimized**: Only displays PCs that exist in results  
-✅ **Validated**: PowerShell best practices applied  
+✅ **Validated**: PowerShell best practices applied
 
 ---
 

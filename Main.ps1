@@ -85,6 +85,7 @@ Import-Module (Join-Path $functionsPath "Helpers.ps1") -Force
 Import-Module (Join-Path $functionsPath "PC-Management.ps1") -Force
 Import-Module (Join-Path $functionsPath "Web-Blocking.ps1") -Force
 Import-Module (Join-Path $functionsPath "Utilities.ps1") -Force
+Import-Module (Join-Path $functionsPath "Lab-Monitoring.ps1") -Force
 Write-Host "Modules loaded successfully!" -ForegroundColor Green
 Write-Host ""
 
@@ -129,6 +130,9 @@ function Show-Menu {
     Write-Host "  20. Export MySQL Database from a single PC"
     Write-Host "  21. Export MySQL Databases from a range of PCs"
     Write-Host "  22. Export MySQL Databases from ALL PCs"
+    Write-Host ""
+    Write-Host "█ LAB MONITORING" -ForegroundColor Green
+    Write-Host "  25. Student Activity Monitor - See what students are doing" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "█ SYSTEM" -ForegroundColor DarkGray
     Write-Host "  23. Clear screen and return to menu"
@@ -207,7 +211,7 @@ $null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 # Main program loop
 do {
     Show-Menu
-    $choice = Read-Host "Enter your choice (1-24)"
+    $choice = Read-Host "Enter your choice (1-25)"
 
     switch ($choice) {
         # ===== PC MANAGEMENT =====
@@ -317,6 +321,44 @@ do {
         '22' {
             $targets = foreach ($i in 1..35) { "PC-$i" }
             Export-MySQLDatabases -Targets $targets -ExportType "ALL PCs" -ScriptPath $scriptPath
+        }
+        
+        # ===== LAB MONITORING =====
+        '25' {
+            Write-Host ""
+            Write-Host "Student Activity Monitor Options:" -ForegroundColor Yellow
+            Write-Host "  1. Monitor ALL PCs (PC-1 to PC-35)"
+            Write-Host "  2. Monitor specific PC"
+            Write-Host "  3. Monitor range of PCs"
+            Write-Host "  4. Monitor ALL PCs and export report"
+            Write-Host ""
+            
+            $monitorChoice = Read-Host "Select option (1-4)"
+            
+            switch ($monitorChoice) {
+                '1' {
+                    $targets = foreach ($i in 1..35) { "PC-$i" }
+                    Get-StudentActivity -Targets $targets
+                }
+                '2' {
+                    $pc = Read-Host "Enter PC name (e.g., PC-1)"
+                    $targets = @($pc)
+                    Get-StudentActivity -Targets $targets
+                }
+                '3' {
+                    $start = Read-Host "Enter start number (e.g., 5)"
+                    $end   = Read-Host "Enter end number (e.g., 10)"
+                    $targets = foreach ($i in $start..$end) { "PC-$i" }
+                    Get-StudentActivity -Targets $targets
+                }
+                '4' {
+                    $targets = foreach ($i in 1..35) { "PC-$i" }
+                    Get-StudentActivity -Targets $targets -ExportToFile
+                }
+                default {
+                    Write-Host "Invalid choice" -ForegroundColor Red
+                }
+            }
         }
         
         # ===== SYSTEM =====
