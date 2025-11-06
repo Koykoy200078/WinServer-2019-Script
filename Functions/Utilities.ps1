@@ -489,7 +489,7 @@ function Show-AllHostsFiles {
                                 Exists = $true
                                 TotalLines = $totalLines
                                 BlockedEntries = $blockedEntries.Count
-                                HasMarker = ($markerLine -ne $null)
+                                HasMarker = ($null -ne $markerLine)
                                 MarkerText = if ($markerLine) { $markerLine } else { "No marker" }
                                 Content = $content
                             }
@@ -591,20 +591,24 @@ function Show-AllHostsFiles {
                     Write-Host "Content:" -ForegroundColor Green
                     Write-Host "-------------------------------------------" -ForegroundColor DarkGray
                     
-                    foreach ($line in $pcResult.Content) {
-                        if ($line -match "^#") {
-                            Write-Host $line -ForegroundColor DarkGreen
-                        } elseif ($line -match "^127\.0\.0\.1\s+" -or $line -match "^0\.0\.0\.0\s+") {
-                            if ($line -match "localhost") {
-                                Write-Host $line -ForegroundColor Gray
+                    if ($pcResult.Content -and $pcResult.Content.Count -gt 0) {
+                        foreach ($line in $pcResult.Content) {
+                            if ($line -match "^#") {
+                                Write-Host $line -ForegroundColor DarkGreen
+                            } elseif ($line -match "^127\.0\.0\.1\s+" -or $line -match "^0\.0\.0\.0\s+") {
+                                if ($line -match "localhost") {
+                                    Write-Host $line -ForegroundColor Gray
+                                } else {
+                                    Write-Host $line -ForegroundColor Yellow
+                                }
+                            } elseif ([string]::IsNullOrWhiteSpace($line)) {
+                                Write-Host ""
                             } else {
-                                Write-Host $line -ForegroundColor Yellow
+                                Write-Host $line -ForegroundColor White
                             }
-                        } elseif ([string]::IsNullOrWhiteSpace($line)) {
-                            Write-Host ""
-                        } else {
-                            Write-Host $line -ForegroundColor White
                         }
+                    } else {
+                        Write-Host "(Empty file or no content)" -ForegroundColor DarkGray
                     }
                     Write-Host "-------------------------------------------" -ForegroundColor DarkGray
                 } else {
@@ -614,31 +618,54 @@ function Show-AllHostsFiles {
             '2' {
                 $pcsWithBlocks = $hostsResults | Where-Object { $_.BlockedEntries -gt 0 }
                 
-                foreach ($pcResult in $pcsWithBlocks) {
+                if ($pcsWithBlocks.Count -eq 0) {
                     Write-Host ""
-                    Write-Host "===== HOSTS FILE: $($pcResult.Computer) =====" -ForegroundColor Cyan
-                    Write-Host "Total Lines: $($pcResult.TotalLines)" -ForegroundColor White
-                    Write-Host "Blocked Entries: $($pcResult.BlockedEntries)" -ForegroundColor Yellow
-                    Write-Host "Marker: $($pcResult.MarkerText)" -ForegroundColor Green
+                    Write-Host "No PCs found with blocked entries." -ForegroundColor Yellow
                     Write-Host ""
-                    
-                    # Show only blocked entries
-                    Write-Host "Blocked Entries Only:" -ForegroundColor Yellow
-                    Write-Host "-------------------------------------------" -ForegroundColor DarkGray
-                    
-                    $blockedLines = $pcResult.Content | Where-Object { 
-                        ($_ -match "^127\.0\.0\.1\s+" -or $_ -match "^0\.0\.0\.0\s+") -and 
-                        $_ -notmatch "localhost" 
+                } else {
+                    foreach ($pcResult in $pcsWithBlocks) {
+                        Write-Host ""
+                        Write-Host "===== HOSTS FILE: $($pcResult.Computer) =====" -ForegroundColor Cyan
+                        Write-Host "Total Lines: $($pcResult.TotalLines)" -ForegroundColor White
+                        Write-Host "Blocked Entries: $($pcResult.BlockedEntries)" -ForegroundColor Yellow
+                        Write-Host "Marker: $($pcResult.MarkerText)" -ForegroundColor Green
+                        Write-Host ""
+                        
+                        # Show only blocked entries
+                        Write-Host "Blocked Entries Only:" -ForegroundColor Yellow
+                        Write-Host "-------------------------------------------" -ForegroundColor DarkGray
+                        
+                        if ($pcResult.Content -and $pcResult.Content.Count -gt 0) {
+                            $blockedLines = $pcResult.Content | Where-Object { 
+                                ($_ -match "^127\.0\.0\.1\s+" -or $_ -match "^0\.0\.0\.0\s+") -and 
+                                $_ -notmatch "localhost" 
+                            }
+                            
+                            if ($blockedLines) {
+                                foreach ($line in $blockedLines) {
+                                    Write-Host $line -ForegroundColor Yellow
+                                }
+                            } else {
+                                Write-Host "(No blocked entries found)" -ForegroundColor DarkGray
+                            }
+                        } else {
+                            Write-Host "(No content available)" -ForegroundColor DarkGray
+                        }
+                        Write-Host "-------------------------------------------" -ForegroundColor DarkGray
                     }
-                    
-                    foreach ($line in $blockedLines) {
-                        Write-Host $line -ForegroundColor Yellow
-                    }
-                    Write-Host "-------------------------------------------" -ForegroundColor DarkGray
                 }
             }
             '3' {
                 foreach ($pcResult in $hostsResults) {
+                    # Skip if no content exists
+                    if (-not $pcResult.Exists) {
+                        Write-Host ""
+                        Write-Host "===== HOSTS FILE: $($pcResult.Computer) =====" -ForegroundColor Red
+                        Write-Host "Status: File not found or PC offline" -ForegroundColor Red
+                        Write-Host "-------------------------------------------" -ForegroundColor DarkGray
+                        continue
+                    }
+                    
                     Write-Host ""
                     Write-Host "===== HOSTS FILE: $($pcResult.Computer) =====" -ForegroundColor Cyan
                     Write-Host "Total Lines: $($pcResult.TotalLines)" -ForegroundColor White
@@ -648,20 +675,24 @@ function Show-AllHostsFiles {
                     Write-Host "Content:" -ForegroundColor Green
                     Write-Host "-------------------------------------------" -ForegroundColor DarkGray
                     
-                    foreach ($line in $pcResult.Content) {
-                        if ($line -match "^#") {
-                            Write-Host $line -ForegroundColor DarkGreen
-                        } elseif ($line -match "^127\.0\.0\.1\s+" -or $line -match "^0\.0\.0\.0\s+") {
-                            if ($line -match "localhost") {
-                                Write-Host $line -ForegroundColor Gray
+                    if ($pcResult.Content -and $pcResult.Content.Count -gt 0) {
+                        foreach ($line in $pcResult.Content) {
+                            if ($line -match "^#") {
+                                Write-Host $line -ForegroundColor DarkGreen
+                            } elseif ($line -match "^127\.0\.0\.1\s+" -or $line -match "^0\.0\.0\.0\s+") {
+                                if ($line -match "localhost") {
+                                    Write-Host $line -ForegroundColor Gray
+                                } else {
+                                    Write-Host $line -ForegroundColor Yellow
+                                }
+                            } elseif ([string]::IsNullOrWhiteSpace($line)) {
+                                Write-Host ""
                             } else {
-                                Write-Host $line -ForegroundColor Yellow
+                                Write-Host $line -ForegroundColor White
                             }
-                        } elseif ([string]::IsNullOrWhiteSpace($line)) {
-                            Write-Host ""
-                        } else {
-                            Write-Host $line -ForegroundColor White
                         }
+                    } else {
+                        Write-Host "(Empty file)" -ForegroundColor DarkGray
                     }
                     Write-Host "-------------------------------------------" -ForegroundColor DarkGray
                 }
