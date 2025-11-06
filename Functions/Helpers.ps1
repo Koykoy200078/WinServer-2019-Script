@@ -96,5 +96,3 @@ function Get-BlockingStatus {
         }
     }
 }
-
-Export-ModuleMember -Function Test-DomainMembership, Get-BlockingStatus

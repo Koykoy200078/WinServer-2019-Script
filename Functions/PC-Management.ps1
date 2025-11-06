@@ -151,5 +151,3 @@ function Invoke-DeepScan {
     
     Pause
 }
-
-Export-ModuleMember -Function Get-AllPCStatus, Invoke-PCShutdown, Invoke-PCRestart, Invoke-DeepScan

@@ -451,5 +451,3 @@ function Export-MySQLDatabases {
     Write-Host "All backups saved to: $exportFolder" -ForegroundColor Green
     Pause
 }
-
-Export-ModuleMember -Function Sync-TimeToAllPCs, Invoke-BackupCleanup, Export-MySQLDatabases

@@ -610,5 +610,3 @@ function Show-BlockLists {
     Write-Host "Press any key to return to menu..."
     $null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
-
-Export-ModuleMember -Function Invoke-WebBlocking, Invoke-WebUnblocking, Invoke-AIBlocking, Show-BlockLists
