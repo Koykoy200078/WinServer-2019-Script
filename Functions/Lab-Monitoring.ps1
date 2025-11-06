@@ -527,16 +527,18 @@ function Start-RealtimeMonitor {
     try {
         while ($true) {
             $scanCount++
-            $currentTime = Get-Date
-            $elapsed = $currentTime - $startTime
             
             Clear-Host
+            
+            # Calculate elapsed time at start of scan
+            $currentTime = Get-Date
+            $elapsed = $currentTime - $startTime
             
             # Header
             Write-Host "=============================================" -ForegroundColor Cyan
             Write-Host "   REAL-TIME MONITOR - SCAN #$scanCount" -ForegroundColor Cyan
             Write-Host "=============================================" -ForegroundColor Cyan
-            Write-Host "Time: $(Get-Date -Format 'HH:mm:ss') | Elapsed: $($elapsed.ToString('hh\:mm\:ss')) | Next refresh: ${RefreshInterval}s" -ForegroundColor White
+            Write-Host "Time: $(Get-Date -Format 'HH:mm:ss') | Elapsed: $($elapsed.ToString('hh\:mm\:ss')) | Interval: ${RefreshInterval}s" -ForegroundColor White
             Write-Host "Press Ctrl+C to stop" -ForegroundColor Yellow
             Write-Host "=============================================" -ForegroundColor Cyan
             Write-Host ""
@@ -822,17 +824,29 @@ function Start-RealtimeMonitor {
             
             Write-Host ""
             Write-Host "=============================================" -ForegroundColor Cyan
+            Write-Host "" # Empty line for countdown
             
-            # Countdown with live updates
+            # Countdown with live updates - move cursor up to overwrite the countdown line
+            $countdownLine = [Console]::CursorTop - 1
+            
             for ($i = $RefreshInterval; $i -gt 0; $i--) {
+                # Calculate current elapsed time
                 $currentElapsed = (Get-Date) - $startTime
                 $elapsedStr = $currentElapsed.ToString('hh\:mm\:ss')
                 
-                # Clear the line and show countdown
-                Write-Host "`rNext scan in $i seconds... | Elapsed: $elapsedStr (Ctrl+C to stop)" -NoNewline -ForegroundColor Yellow
+                # Move cursor to countdown line and clear it
+                [Console]::SetCursorPosition(0, $countdownLine)
+                Write-Host (" " * 120) -NoNewline  # Clear the line
+                [Console]::SetCursorPosition(0, $countdownLine)
+                
+                # Show countdown with updated elapsed time
+                Write-Host "Next scan in $i seconds... | Elapsed: $elapsedStr | Press Ctrl+C to stop" -ForegroundColor Yellow -NoNewline
                 Start-Sleep -Seconds 1
             }
-            Write-Host "" # New line after countdown
+            
+            # Clear the countdown line before next iteration
+            [Console]::SetCursorPosition(0, $countdownLine)
+            Write-Host (" " * 120)
         }
     }
     catch [System.Management.Automation.PipelineStoppedException] {
