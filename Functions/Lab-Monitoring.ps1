@@ -822,10 +822,17 @@ function Start-RealtimeMonitor {
             
             Write-Host ""
             Write-Host "=============================================" -ForegroundColor Cyan
-            Write-Host "Next scan in $RefreshInterval seconds... (Ctrl+C to stop)" -ForegroundColor Yellow
             
-            # Wait for next refresh
-            Start-Sleep -Seconds $RefreshInterval
+            # Countdown with live updates
+            for ($i = $RefreshInterval; $i -gt 0; $i--) {
+                $currentElapsed = (Get-Date) - $startTime
+                $elapsedStr = $currentElapsed.ToString('hh\:mm\:ss')
+                
+                # Clear the line and show countdown
+                Write-Host "`rNext scan in $i seconds... | Elapsed: $elapsedStr (Ctrl+C to stop)" -NoNewline -ForegroundColor Yellow
+                Start-Sleep -Seconds 1
+            }
+            Write-Host "" # New line after countdown
         }
     }
     catch [System.Management.Automation.PipelineStoppedException] {
