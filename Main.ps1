@@ -125,13 +125,14 @@ function Show-Menu {
     Write-Host "█ UTILITIES" -ForegroundColor Magenta
     Write-Host "  17. Sync Time/Date/Timezone to ALL PCs from Server"
     Write-Host "  18. Clean up backup hosts files on ALL PCs"
-    Write-Host "  19. Export MySQL Database from a single PC"
-    Write-Host "  20. Export MySQL Databases from a range of PCs"
-    Write-Host "  21. Export MySQL Databases from ALL PCs"
+    Write-Host "  19. View all PC hosts files" -ForegroundColor Cyan
+    Write-Host "  20. Export MySQL Database from a single PC"
+    Write-Host "  21. Export MySQL Databases from a range of PCs"
+    Write-Host "  22. Export MySQL Databases from ALL PCs"
     Write-Host ""
     Write-Host "█ SYSTEM" -ForegroundColor DarkGray
-    Write-Host "  22. Clear screen and return to menu"
-    Write-Host "  23. Exit"
+    Write-Host "  23. Clear screen and return to menu"
+    Write-Host "  24. Exit"
     Write-Host ""
     Write-Host "=============================================" -ForegroundColor Cyan
 }
@@ -206,7 +207,7 @@ $null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 # Main program loop
 do {
     Show-Menu
-    $choice = Read-Host "Enter your choice (1-23)"
+    $choice = Read-Host "Enter your choice (1-24)"
 
     switch ($choice) {
         # ===== PC MANAGEMENT =====
@@ -300,26 +301,29 @@ do {
             Invoke-BackupCleanup
         }
         '19' {
+            Show-AllHostsFiles
+        }
+        '20' {
             $pc = Read-Host "Enter the PC name (e.g., PC-1)"
             $targets = @($pc)
             Export-MySQLDatabases -Targets $targets -ExportType "Single PC: $pc" -ScriptPath $scriptPath
         }
-        '20' {
+        '21' {
             $start = Read-Host "Enter start number (e.g., 5)"
             $end   = Read-Host "Enter end number (e.g., 10)"
             $targets = foreach ($i in $start..$end) { "PC-$i" }
             Export-MySQLDatabases -Targets $targets -ExportType "Range: PC-$start to PC-$end" -ScriptPath $scriptPath
         }
-        '21' {
+        '22' {
             $targets = foreach ($i in 1..35) { "PC-$i" }
             Export-MySQLDatabases -Targets $targets -ExportType "ALL PCs" -ScriptPath $scriptPath
         }
         
         # ===== SYSTEM =====
-        '22' {
+        '23' {
             continue  # Just clears and redraws menu
         }
-        '23' {
+        '24' {
             Write-Host "Exiting..." -ForegroundColor Yellow
             break
         }
@@ -330,7 +334,7 @@ do {
         }
     }
 
-} while ($choice -ne '23')
+} while ($choice -ne '24')
 
 Write-Host ""
 Write-Host "Thank you for using PC Management System!" -ForegroundColor Cyan

@@ -451,3 +451,224 @@ function Export-MySQLDatabases {
     Write-Host "All backups saved to: $exportFolder" -ForegroundColor Green
     Pause
 }
+
+function Show-AllHostsFiles {
+    Write-Host "===== VIEW ALL PC HOSTS FILES =====" -ForegroundColor Cyan
+    Write-Host "Retrieving hosts files from all domain PCs..." -ForegroundColor Yellow
+    Write-Host "Target Domain: $script:targetDomain" -ForegroundColor Cyan
+    Write-Host ""
+    
+    $targets = foreach ($i in 1..35) { "PC-$i" }
+    $hostsResults = @()
+    
+    foreach ($pc in $targets) {
+        Write-Host "Checking $pc..." -ForegroundColor Gray
+        try {
+            if (Test-WSMan -ComputerName $pc -ErrorAction Stop) {
+                $isDomainMember = Test-DomainMembership -ComputerName $pc
+                
+                if ($isDomainMember) {
+                    $hostsContent = Invoke-Command -ComputerName $pc -Credential $script:cred -ScriptBlock {
+                        $hostsFile = "$env:SystemRoot\System32\drivers\etc\hosts"
+                        
+                        if (Test-Path $hostsFile) {
+                            $content = Get-Content $hostsFile
+                            $totalLines = $content.Count
+                            
+                            # Count blocked sites (lines starting with 127.0.0.1 or 0.0.0.0, excluding localhost)
+                            $blockedEntries = $content | Where-Object { 
+                                ($_ -match "^127\.0\.0\.1\s+" -or $_ -match "^0\.0\.0\.0\s+") -and 
+                                $_ -notmatch "localhost" 
+                            }
+                            
+                            # Get marker line if exists
+                            $markerLine = $content | Where-Object { $_ -match "BLOCKED BY" }
+                            
+                            [PSCustomObject]@{
+                                Computer = $env:COMPUTERNAME
+                                Exists = $true
+                                TotalLines = $totalLines
+                                BlockedEntries = $blockedEntries.Count
+                                HasMarker = ($markerLine -ne $null)
+                                MarkerText = if ($markerLine) { $markerLine } else { "No marker" }
+                                Content = $content
+                            }
+                        } else {
+                            [PSCustomObject]@{
+                                Computer = $env:COMPUTERNAME
+                                Exists = $false
+                                TotalLines = 0
+                                BlockedEntries = 0
+                                HasMarker = $false
+                                MarkerText = "File not found"
+                                Content = @()
+                            }
+                        }
+                    } -ErrorAction Stop
+                    
+                    $hostsResults += $hostsContent
+                    
+                    if ($hostsContent.Exists) {
+                        Write-Host "  ✓ Retrieved: $($hostsContent.TotalLines) lines, $($hostsContent.BlockedEntries) blocked entries" -ForegroundColor Green
+                    } else {
+                        Write-Host "  ✗ Hosts file not found" -ForegroundColor Red
+                    }
+                } else {
+                    Write-Host "  ⊗ Not in $script:targetDomain domain - SKIPPED" -ForegroundColor Yellow
+                }
+            } else {
+                Write-Host "  ✗ Offline or unreachable" -ForegroundColor Red
+            }
+        }
+        catch {
+            Write-Host "  ✗ Error: $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+    
+    Write-Host ""
+    Write-Host "=============================================" -ForegroundColor Cyan
+    Write-Host "     HOSTS FILES SUMMARY                    " -ForegroundColor Cyan
+    Write-Host "=============================================" -ForegroundColor Cyan
+    Write-Host ""
+    
+    $retrievedCount = ($hostsResults | Where-Object { $_.Exists }).Count
+    Write-Host "Successfully retrieved: $retrievedCount hosts files" -ForegroundColor Green
+    Write-Host ""
+    
+    # Display summary table
+    Write-Host "PC Name       | Status    | Lines | Blocked | Marker" -ForegroundColor Yellow
+    Write-Host "------------- | --------- | ----- | ------- | ------" -ForegroundColor DarkGray
+    
+    foreach ($result in $hostsResults) {
+        $pcName = $result.Computer.PadRight(13)
+        $status = if ($result.Exists) { "Found".PadRight(9) } else { "Missing".PadRight(9) }
+        $lines = $result.TotalLines.ToString().PadRight(5)
+        $blocked = $result.BlockedEntries.ToString().PadRight(7)
+        $marker = if ($result.HasMarker) { "Yes" } else { "No" }
+        
+        if ($result.Exists) {
+            if ($result.BlockedEntries -gt 0) {
+                Write-Host "$pcName | $status | $lines | $blocked | $marker" -ForegroundColor Cyan
+            } else {
+                Write-Host "$pcName | $status | $lines | $blocked | $marker" -ForegroundColor White
+            }
+        } else {
+            Write-Host "$pcName | $status | $lines | $blocked | $marker" -ForegroundColor DarkGray
+        }
+    }
+    
+    Write-Host ""
+    Write-Host "=============================================" -ForegroundColor Cyan
+    Write-Host ""
+    
+    # Ask if user wants to see detailed content
+    $viewDetails = Read-Host "Do you want to view detailed hosts file content? (y/n)"
+    
+    if ($viewDetails -eq 'y' -or $viewDetails -eq 'Y') {
+        Write-Host ""
+        
+        # Ask which PC or all
+        Write-Host "Options:" -ForegroundColor Yellow
+        Write-Host "  1. View specific PC"
+        Write-Host "  2. View all PCs with blocked entries"
+        Write-Host "  3. View all PCs (including empty)"
+        Write-Host ""
+        
+        $detailChoice = Read-Host "Select option (1-3)"
+        
+        switch ($detailChoice) {
+            '1' {
+                $pcToView = Read-Host "Enter PC name (e.g., PC-1)"
+                $pcResult = $hostsResults | Where-Object { $_.Computer -eq $pcToView }
+                
+                if ($pcResult) {
+                    Write-Host ""
+                    Write-Host "===== HOSTS FILE: $($pcResult.Computer) =====" -ForegroundColor Cyan
+                    Write-Host "Total Lines: $($pcResult.TotalLines)" -ForegroundColor White
+                    Write-Host "Blocked Entries: $($pcResult.BlockedEntries)" -ForegroundColor White
+                    Write-Host "Marker: $($pcResult.MarkerText)" -ForegroundColor Yellow
+                    Write-Host ""
+                    Write-Host "Content:" -ForegroundColor Green
+                    Write-Host "-------------------------------------------" -ForegroundColor DarkGray
+                    
+                    foreach ($line in $pcResult.Content) {
+                        if ($line -match "^#") {
+                            Write-Host $line -ForegroundColor DarkGreen
+                        } elseif ($line -match "^127\.0\.0\.1\s+" -or $line -match "^0\.0\.0\.0\s+") {
+                            if ($line -match "localhost") {
+                                Write-Host $line -ForegroundColor Gray
+                            } else {
+                                Write-Host $line -ForegroundColor Yellow
+                            }
+                        } elseif ([string]::IsNullOrWhiteSpace($line)) {
+                            Write-Host ""
+                        } else {
+                            Write-Host $line -ForegroundColor White
+                        }
+                    }
+                    Write-Host "-------------------------------------------" -ForegroundColor DarkGray
+                } else {
+                    Write-Host "PC not found in results" -ForegroundColor Red
+                }
+            }
+            '2' {
+                $pcsWithBlocks = $hostsResults | Where-Object { $_.BlockedEntries -gt 0 }
+                
+                foreach ($pcResult in $pcsWithBlocks) {
+                    Write-Host ""
+                    Write-Host "===== HOSTS FILE: $($pcResult.Computer) =====" -ForegroundColor Cyan
+                    Write-Host "Total Lines: $($pcResult.TotalLines)" -ForegroundColor White
+                    Write-Host "Blocked Entries: $($pcResult.BlockedEntries)" -ForegroundColor Yellow
+                    Write-Host "Marker: $($pcResult.MarkerText)" -ForegroundColor Green
+                    Write-Host ""
+                    
+                    # Show only blocked entries
+                    Write-Host "Blocked Entries Only:" -ForegroundColor Yellow
+                    Write-Host "-------------------------------------------" -ForegroundColor DarkGray
+                    
+                    $blockedLines = $pcResult.Content | Where-Object { 
+                        ($_ -match "^127\.0\.0\.1\s+" -or $_ -match "^0\.0\.0\.0\s+") -and 
+                        $_ -notmatch "localhost" 
+                    }
+                    
+                    foreach ($line in $blockedLines) {
+                        Write-Host $line -ForegroundColor Yellow
+                    }
+                    Write-Host "-------------------------------------------" -ForegroundColor DarkGray
+                }
+            }
+            '3' {
+                foreach ($pcResult in $hostsResults) {
+                    Write-Host ""
+                    Write-Host "===== HOSTS FILE: $($pcResult.Computer) =====" -ForegroundColor Cyan
+                    Write-Host "Total Lines: $($pcResult.TotalLines)" -ForegroundColor White
+                    Write-Host "Blocked Entries: $($pcResult.BlockedEntries)" -ForegroundColor White
+                    Write-Host "Marker: $($pcResult.MarkerText)" -ForegroundColor Yellow
+                    Write-Host ""
+                    Write-Host "Content:" -ForegroundColor Green
+                    Write-Host "-------------------------------------------" -ForegroundColor DarkGray
+                    
+                    foreach ($line in $pcResult.Content) {
+                        if ($line -match "^#") {
+                            Write-Host $line -ForegroundColor DarkGreen
+                        } elseif ($line -match "^127\.0\.0\.1\s+" -or $line -match "^0\.0\.0\.0\s+") {
+                            if ($line -match "localhost") {
+                                Write-Host $line -ForegroundColor Gray
+                            } else {
+                                Write-Host $line -ForegroundColor Yellow
+                            }
+                        } elseif ([string]::IsNullOrWhiteSpace($line)) {
+                            Write-Host ""
+                        } else {
+                            Write-Host $line -ForegroundColor White
+                        }
+                    }
+                    Write-Host "-------------------------------------------" -ForegroundColor DarkGray
+                }
+            }
+        }
+    }
+    
+    Write-Host ""
+    Pause
+}

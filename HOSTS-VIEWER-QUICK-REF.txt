@@ -1,0 +1,68 @@
+# Quick Reference: View All PC Hosts Files
+
+## Access
+**Menu Option:** 19 (in UTILITIES section)
+
+## What It Does
+Retrieves and displays the hosts files from all 35 domain PCs with:
+- Summary table showing status, line count, blocked entries
+- Optional detailed view of file contents
+- Color-coded display for easy reading
+
+## Quick Steps
+
+### 1. Run the Feature
+```
+Enter your choice (1-24): 19
+```
+
+### 2. Review Summary
+See table with all PCs:
+- ✅ Found or ❌ Missing
+- Total lines in hosts file
+- Number of blocked entries
+- Whether blocking marker present
+
+### 3. View Details (Optional)
+Choose to view:
+1. **Specific PC** - Enter PC name (e.g., PC-5)
+2. **PCs with blocking** - See only blocked entries
+3. **All PCs** - Full content of all hosts files
+
+## Color Guide
+- 🔵 **Cyan** = PC has blocked entries
+- ⚪ **White** = PC has hosts file, no blocks
+- ⚫ **Gray** = PC missing hosts file or offline
+- 🟢 **Green** = Comments in file
+- 🟡 **Yellow** = Blocked site entries
+
+## Common Uses
+✅ Verify blocking after Option 10 (Block all PCs)  
+✅ Audit which PCs have active blocking  
+✅ Troubleshoot PCs not blocking properly  
+✅ Verify cleanup after Option 18  
+✅ Check before/after unblocking  
+
+## Example Output
+```
+PC Name       | Status    | Lines | Blocked | Marker
+------------- | --------- | ----- | ------- | ------
+PC-1          | Found     | 145   | 120     | Yes
+PC-2          | Found     | 145   | 120     | Yes
+PC-3          | Found     | 25    | 0       | No
+PC-4          | Missing   | 0     | 0       | No
+```
+
+## Tips
+💡 Use after blocking to verify success  
+💡 Run weekly for auditing  
+💡 Combine with Option 14 (Deep Scan) for complete view  
+💡 Focus on specific PC when troubleshooting  
+
+## Performance
+⏱️ Takes 1-3 minutes for all 35 PCs  
+📊 Only retrieves text files (minimal network usage)  
+🔒 Read-only operation (doesn't modify files)  
+
+---
+For detailed documentation, see: **HOSTS-FILE-VIEWER-GUIDE.md**
