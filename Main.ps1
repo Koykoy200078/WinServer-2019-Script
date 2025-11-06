@@ -133,6 +133,7 @@ function Show-Menu {
     Write-Host ""
     Write-Host "█ LAB MONITORING" -ForegroundColor Green
     Write-Host "  25. Student Activity Monitor - See what students are doing" -ForegroundColor Cyan
+    Write-Host "  26. Real-Time Monitor - Continuous monitoring with alerts" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "█ SYSTEM" -ForegroundColor DarkGray
     Write-Host "  23. Clear screen and return to menu"
@@ -211,7 +212,7 @@ $null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 # Main program loop
 do {
     Show-Menu
-    $choice = Read-Host "Enter your choice (1-25)"
+    $choice = Read-Host "Enter your choice (1-26)"
 
     switch ($choice) {
         # ===== PC MANAGEMENT =====
@@ -354,6 +355,61 @@ do {
                 '4' {
                     $targets = foreach ($i in 1..35) { "PC-$i" }
                     Get-StudentActivity -Targets $targets -ExportToFile
+                }
+                default {
+                    Write-Host "Invalid choice" -ForegroundColor Red
+                }
+            }
+        }
+        '26' {
+            Write-Host ""
+            Write-Host "Real-Time Monitor Options:" -ForegroundColor Yellow
+            Write-Host "  1. Monitor ALL PCs (PC-1 to PC-35)"
+            Write-Host "  2. Monitor specific PC"
+            Write-Host "  3. Monitor range of PCs"
+            Write-Host "  4. Custom refresh interval (default: 10 seconds)"
+            Write-Host ""
+            
+            $rtChoice = Read-Host "Select option (1-4)"
+            
+            switch ($rtChoice) {
+                '1' {
+                    $targets = foreach ($i in 1..35) { "PC-$i" }
+                    Start-RealtimeMonitor -Targets $targets
+                }
+                '2' {
+                    $pc = Read-Host "Enter PC name (e.g., PC-1)"
+                    $targets = @($pc)
+                    Start-RealtimeMonitor -Targets $targets
+                }
+                '3' {
+                    $start = Read-Host "Enter start number (e.g., 5)"
+                    $end   = Read-Host "Enter end number (e.g., 10)"
+                    $targets = foreach ($i in $start..$end) { "PC-$i" }
+                    Start-RealtimeMonitor -Targets $targets
+                }
+                '4' {
+                    $interval = Read-Host "Enter refresh interval in seconds (5-60)"
+                    if ($interval -match '^\d+$' -and [int]$interval -ge 5 -and [int]$interval -le 60) {
+                        Write-Host "Monitor scope:" -ForegroundColor Yellow
+                        Write-Host "  1. All PCs"
+                        Write-Host "  2. Range of PCs"
+                        $scopeChoice = Read-Host "Select (1-2)"
+                        
+                        if ($scopeChoice -eq '1') {
+                            $targets = foreach ($i in 1..35) { "PC-$i" }
+                            Start-RealtimeMonitor -Targets $targets -RefreshInterval ([int]$interval)
+                        } else {
+                            $start = Read-Host "Enter start number"
+                            $end   = Read-Host "Enter end number"
+                            $targets = foreach ($i in $start..$end) { "PC-$i" }
+                            Start-RealtimeMonitor -Targets $targets -RefreshInterval ([int]$interval)
+                        }
+                    } else {
+                        Write-Host "Invalid interval. Using default 10 seconds." -ForegroundColor Yellow
+                        $targets = foreach ($i in 1..35) { "PC-$i" }
+                        Start-RealtimeMonitor -Targets $targets
+                    }
                 }
                 default {
                     Write-Host "Invalid choice" -ForegroundColor Red

@@ -390,3 +390,340 @@ DETAILED RESULTS
     Write-Host ""
     Pause
 }
+
+function Start-RealtimeMonitor {
+    param(
+        [Parameter(Mandatory=$false)]
+        [array]$Targets,
+        [int]$RefreshInterval = 10
+    )
+    
+    # Set default targets if not provided
+    if (-not $Targets) {
+        $Targets = 1..35 | ForEach-Object { "PC-$_" }
+    }
+    
+    # Common student applications to highlight
+    $suspiciousApps = @(
+        'steam', 'discord', 'spotify', 'telegram', 'whatsapp', 'messenger',
+        'roblox', 'minecraft', 'fortnite', 'valorant', 'genshin',
+        'utorrent', 'bittorrent', 'netflix', 'twitch', 'tiktok'
+    )
+    
+    $productiveApps = @(
+        'chrome', 'firefox', 'edge', 'word', 'excel', 'powerpoint',
+        'notepad', 'code', 'visual studio', 'mysql', 'xampp', 'python',
+        'java', 'eclipse', 'netbeans', 'androidstudio'
+    )
+    
+    # Alert tracking
+    $alertHistory = @{}
+    $scanCount = 0
+    $startTime = Get-Date
+    
+    Write-Host "=============================================" -ForegroundColor Cyan
+    Write-Host "   REAL-TIME STUDENT ACTIVITY MONITOR       " -ForegroundColor Cyan
+    Write-Host "=============================================" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Monitoring: $($Targets.Count) PCs" -ForegroundColor White
+    Write-Host "Refresh Interval: $RefreshInterval seconds" -ForegroundColor White
+    Write-Host "Domain: $script:targetDomain" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Press Ctrl+C to stop monitoring..." -ForegroundColor Yellow
+    Write-Host ""
+    Start-Sleep -Seconds 2
+    
+    try {
+        while ($true) {
+            $scanCount++
+            $currentTime = Get-Date
+            $elapsed = $currentTime - $startTime
+            
+            Clear-Host
+            
+            # Header
+            Write-Host "=============================================" -ForegroundColor Cyan
+            Write-Host "   REAL-TIME MONITOR - SCAN #$scanCount" -ForegroundColor Cyan
+            Write-Host "=============================================" -ForegroundColor Cyan
+            Write-Host "Time: $(Get-Date -Format 'HH:mm:ss') | Elapsed: $($elapsed.ToString('hh\:mm\:ss')) | Next refresh: ${RefreshInterval}s" -ForegroundColor White
+            Write-Host "Press Ctrl+C to stop" -ForegroundColor Yellow
+            Write-Host "=============================================" -ForegroundColor Cyan
+            Write-Host ""
+            
+            $activityResults = @()
+            $onlineCount = 0
+            $suspiciousCount = 0
+            $newAlerts = @()
+            
+            foreach ($pc in $Targets) {
+                try {
+                    if (Test-WSMan -ComputerName $pc -ErrorAction SilentlyContinue) {
+                        $isDomainMember = Test-DomainMembership -ComputerName $pc
+                        
+                        if ($isDomainMember) {
+                            $pcActivity = Invoke-Command -ComputerName $pc -Credential $script:cred -ScriptBlock {
+                                param($suspicious, $productive)
+                                
+                                # Get logged in user
+                                $loggedUser = (Get-WmiObject -Class Win32_ComputerSystem).UserName
+                                
+                                # Get running processes
+                                $processes = Get-Process | Where-Object { 
+                                    $_.MainWindowTitle -ne "" 
+                                } | Select-Object Name, Id, @{
+                                    Name='Memory(MB)'; 
+                                    Expression={[math]::Round($_.WorkingSet64/1MB, 2)}
+                                }, MainWindowTitle
+                                
+                                # Categorize processes
+                                $suspiciousProcs = $processes | Where-Object { 
+                                    $processName = $_.Name.ToLower()
+                                    $found = $false
+                                    foreach ($sus in $suspicious) {
+                                        if ($processName -like "*$sus*") {
+                                            $found = $true
+                                            break
+                                        }
+                                    }
+                                    $found
+                                }
+                                
+                                $productiveProcs = $processes | Where-Object { 
+                                    $processName = $_.Name.ToLower()
+                                    $found = $false
+                                    foreach ($prod in $productive) {
+                                        if ($processName -like "*$prod*") {
+                                            $found = $true
+                                            break
+                                        }
+                                    }
+                                    $found
+                                }
+                                
+                                # Get active window
+                                Add-Type @"
+                                    using System;
+                                    using System.Runtime.InteropServices;
+                                    using System.Text;
+                                    public class Win32 {
+                                        [DllImport("user32.dll")]
+                                        public static extern IntPtr GetForegroundWindow();
+                                        
+                                        [DllImport("user32.dll")]
+                                        public static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int count);
+                                        
+                                        [DllImport("user32.dll")]
+                                        public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+                                    }
+"@
+                                
+                                $activeWindow = ""
+                                $activeProcess = ""
+                                try {
+                                    $hwnd = [Win32]::GetForegroundWindow()
+                                    $title = New-Object System.Text.StringBuilder 256
+                                    [void][Win32]::GetWindowText($hwnd, $title, 256)
+                                    $activeWindow = $title.ToString()
+                                    
+                                    $procId = 0
+                                    [void][Win32]::GetWindowThreadProcessId($hwnd, [ref]$procId)
+                                    if ($procId -gt 0) {
+                                        $proc = Get-Process -Id $procId -ErrorAction SilentlyContinue
+                                        if ($proc) {
+                                            $activeProcess = $proc.ProcessName
+                                        }
+                                    }
+                                } catch {
+                                    $activeWindow = ""
+                                    $activeProcess = "Unknown"
+                                }
+                                
+                                # Get CPU/Memory
+                                try {
+                                    $cpu = (Get-WmiObject Win32_Processor -ErrorAction Stop).LoadPercentage
+                                } catch {
+                                    $cpu = 0
+                                }
+                                
+                                try {
+                                    $mem = Get-WmiObject Win32_OperatingSystem -ErrorAction Stop
+                                    $memUsage = [math]::Round((($mem.TotalVisibleMemorySize - $mem.FreePhysicalMemory) / $mem.TotalVisibleMemorySize) * 100, 2)
+                                } catch {
+                                    $memUsage = 0
+                                }
+                                
+                                [PSCustomObject]@{
+                                    Computer = $env:COMPUTERNAME
+                                    LoggedInUser = if ($loggedUser) { $loggedUser } else { "No user" }
+                                    ActiveWindow = $activeWindow
+                                    ActiveProcess = $activeProcess
+                                    SuspiciousApps = $suspiciousProcs.Count
+                                    SuspiciousProcesses = $suspiciousProcs
+                                    ProductiveApps = $productiveProcs.Count
+                                    ProductiveProcesses = $productiveProcs
+                                    CPUUsage = $cpu
+                                    MemoryUsage = $memUsage
+                                }
+                            } -ArgumentList $suspiciousApps, $productiveApps -ErrorAction Stop
+                            
+                            $activityResults += $pcActivity
+                            $onlineCount++
+                            
+                            # Check for suspicious activity
+                            if ($pcActivity.SuspiciousApps -gt 0) {
+                                $suspiciousCount++
+                                
+                                # Check if this is a new alert
+                                $alertKey = "$pc-$($pcActivity.SuspiciousProcesses[0].Name)"
+                                if (-not $alertHistory.ContainsKey($alertKey)) {
+                                    $alertHistory[$alertKey] = Get-Date
+                                    $newAlerts += [PSCustomObject]@{
+                                        PC = $pc
+                                        User = $pcActivity.LoggedInUser
+                                        App = $pcActivity.SuspiciousProcesses[0].Name
+                                        Window = $pcActivity.ActiveWindow
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch {
+                    # Silently continue on errors during real-time monitoring
+                }
+            }
+            
+            # Display summary statistics
+            Write-Host "SUMMARY:" -ForegroundColor Cyan
+            Write-Host "  Online: $onlineCount / $($Targets.Count)" -ForegroundColor White
+            Write-Host "  Suspicious Activity: " -NoNewline
+            if ($suspiciousCount -gt 0) {
+                Write-Host "$suspiciousCount PCs" -ForegroundColor Red
+            } else {
+                Write-Host "None ✓" -ForegroundColor Green
+            }
+            Write-Host "  Total Alerts This Session: $($alertHistory.Count)" -ForegroundColor Yellow
+            Write-Host ""
+            
+            # Display new alerts if any
+            if ($newAlerts.Count -gt 0) {
+                Write-Host "🚨 NEW ALERTS DETECTED! 🚨" -ForegroundColor Red -BackgroundColor Yellow
+                Write-Host ""
+                foreach ($alert in $newAlerts) {
+                    Write-Host "  ⚠️  $($alert.PC) - $($alert.User)" -ForegroundColor Red
+                    Write-Host "     App: $($alert.App)" -ForegroundColor Red
+                    if ($alert.Window) {
+                        Write-Host "     Window: $($alert.Window)" -ForegroundColor DarkRed
+                    }
+                    Write-Host ""
+                }
+            }
+            
+            # Display real-time table
+            if ($activityResults.Count -gt 0) {
+                # Sort: suspicious first, then by PC name
+                $sortedResults = $activityResults | Sort-Object @{
+                    Expression = { $_.SuspiciousApps }
+                    Descending = $true
+                }, Computer
+                
+                Write-Host "PC Name       | User              | Active Process      | CPU% | RAM% | Status" -ForegroundColor Yellow
+                Write-Host "------------- | ----------------- | ------------------- | ---- | ---- | ------" -ForegroundColor DarkGray
+                
+                foreach ($result in $sortedResults) {
+                    $pcName = $result.Computer.PadRight(13)
+                    $user = if ($result.LoggedInUser.Length -gt 17) { 
+                        $result.LoggedInUser.Substring(0, 14) + "..." 
+                    } else { 
+                        $result.LoggedInUser.PadRight(17) 
+                    }
+                    $process = if ($result.ActiveProcess.Length -gt 19) { 
+                        $result.ActiveProcess.Substring(0, 16) + "..." 
+                    } else { 
+                        $result.ActiveProcess.PadRight(19) 
+                    }
+                    
+                    # Safe string conversion for CPU and Memory
+                    $cpuValue = if ($null -ne $result.CPUUsage) { $result.CPUUsage } else { 0 }
+                    $memValue = if ($null -ne $result.MemoryUsage) { $result.MemoryUsage } else { 0 }
+                    $cpu = $cpuValue.ToString().PadRight(4)
+                    $mem = $memValue.ToString().PadRight(4)
+                    
+                    if ($result.SuspiciousApps -gt 0) {
+                        $status = "⚠️ ALERT"
+                        # Flash red background for suspicious activity
+                        Write-Host "$pcName | $user | $process | $cpu | $mem | $status" -ForegroundColor White -BackgroundColor Red
+                        
+                        # Show what suspicious apps they're using
+                        foreach ($susProc in $result.SuspiciousProcesses) {
+                            $appInfo = "Suspicious: $($susProc.Name)"
+                            if ($susProc.MainWindowTitle) {
+                                $appInfo += " - $($susProc.MainWindowTitle)"
+                            }
+                            Write-Host "              └─> $appInfo" -ForegroundColor Red
+                        }
+                    } elseif ($result.LoggedInUser -eq "No user") {
+                        $status = "Idle"
+                        Write-Host "$pcName | $user | $process | $cpu | $mem | $status" -ForegroundColor DarkGray
+                    } else {
+                        $status = "Active"
+                        Write-Host "$pcName | $user | $process | $cpu | $mem | $status" -ForegroundColor Cyan
+                        
+                        # Show what they're actively using
+                        if ($result.ActiveWindow) {
+                            Write-Host "              └─> Using: $($result.ActiveWindow)" -ForegroundColor Gray
+                        }
+                        
+                        # Show productive apps if any
+                        if ($result.ProductiveApps -gt 0 -and $result.ProductiveProcesses.Count -gt 0) {
+                            $prodApps = ($result.ProductiveProcesses | Select-Object -First 2 -ExpandProperty Name) -join ', '
+                            Write-Host "              └─> Apps: $prodApps" -ForegroundColor Green
+                        }
+                    }
+                }
+            }
+            
+            Write-Host ""
+            Write-Host "=============================================" -ForegroundColor Cyan
+            Write-Host "Next scan in $RefreshInterval seconds... (Ctrl+C to stop)" -ForegroundColor Yellow
+            
+            # Wait for next refresh
+            Start-Sleep -Seconds $RefreshInterval
+        }
+    }
+    catch [System.Management.Automation.PipelineStoppedException] {
+        # Ctrl+C was pressed
+        Write-Host ""
+        Write-Host ""
+        Write-Host "=============================================" -ForegroundColor Yellow
+        Write-Host "   MONITORING STOPPED BY USER (Ctrl+C)      " -ForegroundColor Yellow
+        Write-Host "=============================================" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Session Summary:" -ForegroundColor Cyan
+        Write-Host "  Total Scans: $scanCount" -ForegroundColor White
+        Write-Host "  Duration: $($elapsed.ToString('hh\:mm\:ss'))" -ForegroundColor White
+        Write-Host "  Total Alerts: $($alertHistory.Count)" -ForegroundColor $(if ($alertHistory.Count -gt 0) { "Red" } else { "Green" })
+        Write-Host ""
+        
+        if ($alertHistory.Count -gt 0) {
+            Write-Host "Alert History:" -ForegroundColor Red
+            Write-Host "-------------------------------------------" -ForegroundColor DarkGray
+            $alertHistory.Keys | ForEach-Object {
+                $parts = $_ -split '-'
+                $alertTime = $alertHistory[$_]
+                Write-Host "  $($alertTime.ToString('HH:mm:ss')) - $($parts[0]) - $($parts[1])" -ForegroundColor Yellow
+            }
+            Write-Host ""
+        }
+        
+        Write-Host "Press any key to return to menu..." -ForegroundColor Cyan
+        $null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    }
+    catch {
+        Write-Host ""
+        Write-Host "Error during monitoring: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host ""
+        Pause
+    }
+}
+
