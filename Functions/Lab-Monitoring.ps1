@@ -32,6 +32,25 @@ function Get-StudentActivity {
         'java', 'eclipse', 'netbeans', 'androidstudio'
     )
     
+    # Suspicious websites (not for class use)
+    $suspiciousWebsites = @(
+        # Social Media
+        'facebook.com', 'fb.com', 'instagram.com', 'twitter.com', 'x.com', 'tiktok.com',
+        'snapchat.com', 'reddit.com', 'pinterest.com', 'linkedin.com', 'tumblr.com',
+        # Video Sites
+        'youtube.com', 'youtu.be', 'netflix.com', 'twitch.tv', 'vimeo.com', 
+        'dailymotion.com', 'hulu.com', 'disneyplus.com',
+        # AI Sites (ChatGPT, etc)
+        'chat.openai.com', 'chatgpt.com', 'bard.google.com', 'claude.ai', 
+        'anthropic.com', 'you.com', 'perplexity.ai', 'character.ai',
+        # Gaming
+        'roblox.com', 'minecraft.net', 'steam.com', 'epicgames.com', 
+        'ea.com', 'activision.com', 'riot.com', 'valorant.com',
+        # Shopping/Entertainment
+        'amazon.com', 'ebay.com', 'shopee.com', 'lazada.com', 'alibaba.com',
+        'zalora.com', 'shein.com', 'spotify.com', 'soundcloud.com'
+    )
+    
     $activityResults = @()
     $onlineCount = 0
     $suspiciousCount = 0
@@ -45,7 +64,7 @@ function Get-StudentActivity {
                 
                 if ($isDomainMember) {
                     $pcActivity = Invoke-Command -ComputerName $pc -Credential $script:cred -ScriptBlock {
-                        param($showAll, $suspicious, $productive)
+                        param($showAll, $suspicious, $productive, $suspiciousUrls)
                         
                         # Get logged in user
                         $loggedUser = (Get-WmiObject -Class Win32_ComputerSystem).UserName
@@ -80,6 +99,28 @@ function Get-StudentActivity {
                         $cpu = (Get-WmiObject Win32_Processor).LoadPercentage
                         $mem = Get-WmiObject Win32_OperatingSystem
                         $memUsage = [math]::Round((($mem.TotalVisibleMemorySize - $mem.FreePhysicalMemory) / $mem.TotalVisibleMemorySize) * 100, 2)
+                        
+                        # Check for suspicious websites in browser windows
+                        $suspiciousWebsitesFound = @()
+                        $browserProcesses = Get-Process | Where-Object { 
+                            $_.Name -match 'chrome|firefox|msedge|iexplore|opera|brave' -and 
+                            $_.MainWindowTitle -ne ""
+                        }
+                        
+                        foreach ($browser in $browserProcesses) {
+                            $windowTitle = $browser.MainWindowTitle.ToLower()
+                            foreach ($url in $suspiciousUrls) {
+                                if ($windowTitle -like "*$url*") {
+                                    $suspiciousWebsitesFound += [PSCustomObject]@{
+                                        Browser = $browser.Name
+                                        Website = $url
+                                        WindowTitle = $browser.MainWindowTitle
+                                        BrowserPID = $browser.Id
+                                    }
+                                    break
+                                }
+                            }
+                        }
                         
                         # Get active window
                         Add-Type @"
@@ -127,13 +168,15 @@ function Get-StudentActivity {
                             TotalProcesses = $processes.Count
                             SuspiciousApps = $suspicious.Count
                             ProductiveApps = $productive.Count
+                            SuspiciousWebsites = $suspiciousWebsitesFound.Count
+                            SuspiciousWebsitesList = $suspiciousWebsitesFound
                             CPUUsage = $cpu
                             MemoryUsage = $memUsage
                             AllProcesses = $processes
                             SuspiciousProcesses = $suspicious
                             ProductiveProcesses = $productive
                         }
-                    } -ArgumentList $ShowAllProcesses, $suspiciousApps, $productiveApps -ErrorAction Stop
+                    } -ArgumentList $ShowAllProcesses, $suspiciousApps, $productiveApps, $suspiciousWebsites -ErrorAction Stop
                     
                     $activityResults += $pcActivity
                     $onlineCount++
@@ -145,8 +188,11 @@ function Get-StudentActivity {
                         "No user" 
                     }
                     
-                    if ($pcActivity.SuspiciousApps -gt 0) {
-                        Write-Host "  ⚠️  $pc - User: $userInfo - Suspicious: $($pcActivity.SuspiciousApps) apps" -ForegroundColor Red
+                    if ($pcActivity.SuspiciousApps -gt 0 -or $pcActivity.SuspiciousWebsites -gt 0) {
+                        $alertMsg = "Suspicious: "
+                        if ($pcActivity.SuspiciousApps -gt 0) { $alertMsg += "$($pcActivity.SuspiciousApps) apps " }
+                        if ($pcActivity.SuspiciousWebsites -gt 0) { $alertMsg += "$($pcActivity.SuspiciousWebsites) websites" }
+                        Write-Host "  ⚠️  $pc - User: $userInfo - $alertMsg" -ForegroundColor Red
                         $suspiciousCount++
                     } elseif ($pcActivity.LoggedInUser -ne "No user logged in") {
                         Write-Host "  ✓ $pc - User: $userInfo - Active: $($pcActivity.ActiveProcess)" -ForegroundColor Green
@@ -194,7 +240,7 @@ function Get-StudentActivity {
             $cpu = $result.CPUUsage.ToString().PadRight(4)
             $mem = $result.MemoryUsage.ToString().PadRight(4)
             
-            if ($result.SuspiciousApps -gt 0) {
+            if ($result.SuspiciousApps -gt 0 -or $result.SuspiciousWebsites -gt 0) {
                 $status = "⚠️ ALERT"
                 Write-Host "$pcName | $user | $process | $cpu | $mem | $status" -ForegroundColor Red
             } elseif ($result.LoggedInUser -eq "No user logged in") {
@@ -252,6 +298,17 @@ function Get-StudentActivity {
                         Write-Host ""
                     }
                     
+                    if ($pcResult.SuspiciousWebsites -gt 0) {
+                        Write-Host "🌐 SUSPICIOUS WEBSITES DETECTED:" -ForegroundColor Red
+                        Write-Host "-------------------------------------------" -ForegroundColor DarkGray
+                        foreach ($web in $pcResult.SuspiciousWebsitesList) {
+                            Write-Host "  - $($web.Website)" -ForegroundColor Red
+                            Write-Host "    Browser: $($web.Browser) (PID: $($web.BrowserPID))" -ForegroundColor DarkRed
+                            Write-Host "    Tab: $($web.WindowTitle)" -ForegroundColor DarkRed
+                        }
+                        Write-Host ""
+                    }
+                    
                     if ($pcResult.ProductiveProcesses.Count -gt 0) {
                         Write-Host "✓ PRODUCTIVE APPLICATIONS:" -ForegroundColor Green
                         Write-Host "-------------------------------------------" -ForegroundColor DarkGray
@@ -287,19 +344,34 @@ function Get-StudentActivity {
                         Write-Host "User: $($pcResult.LoggedInUser)" -ForegroundColor Yellow
                         Write-Host "Current Activity: $($pcResult.ActiveWindow)" -ForegroundColor Yellow
                         Write-Host ""
-                        Write-Host "Suspicious Applications Found:" -ForegroundColor Red
-                        Write-Host "-------------------------------------------" -ForegroundColor DarkGray
                         
-                        foreach ($proc in $pcResult.SuspiciousProcesses) {
-                            Write-Host "  ⚠️  $($proc.Name)" -ForegroundColor Red
-                            Write-Host "      PID: $($proc.Id) | Memory: $($proc.'Memory(MB)') MB" -ForegroundColor DarkRed
-                            if ($proc.MainWindowTitle) {
-                                Write-Host "      Window: $($proc.MainWindowTitle)" -ForegroundColor DarkRed
+                        if ($pcResult.SuspiciousProcesses.Count -gt 0) {
+                            Write-Host "Suspicious Applications Found:" -ForegroundColor Red
+                            Write-Host "-------------------------------------------" -ForegroundColor DarkGray
+                            
+                            foreach ($proc in $pcResult.SuspiciousProcesses) {
+                                Write-Host "  ⚠️  $($proc.Name)" -ForegroundColor Red
+                                Write-Host "      PID: $($proc.Id) | Memory: $($proc.'Memory(MB)') MB" -ForegroundColor DarkRed
+                                if ($proc.MainWindowTitle) {
+                                    Write-Host "      Window: $($proc.MainWindowTitle)" -ForegroundColor DarkRed
+                                }
+                                if ($proc.StartTime) {
+                                    Write-Host "      Started: $($proc.StartTime)" -ForegroundColor DarkRed
+                                }
+                                Write-Host ""
                             }
-                            if ($proc.StartTime) {
-                                Write-Host "      Started: $($proc.StartTime)" -ForegroundColor DarkRed
+                        }
+                        
+                        if ($pcResult.SuspiciousWebsites -gt 0) {
+                            Write-Host "Suspicious Websites Detected:" -ForegroundColor Red
+                            Write-Host "-------------------------------------------" -ForegroundColor DarkGray
+                            
+                            foreach ($web in $pcResult.SuspiciousWebsitesList) {
+                                Write-Host "  🌐 $($web.Website)" -ForegroundColor Red
+                                Write-Host "      Browser: $($web.Browser) (PID: $($web.BrowserPID))" -ForegroundColor DarkRed
+                                Write-Host "      Tab Title: $($web.WindowTitle)" -ForegroundColor DarkRed
+                                Write-Host ""
                             }
-                            Write-Host ""
                         }
                     }
                 }
@@ -416,6 +488,25 @@ function Start-RealtimeMonitor {
         'java', 'eclipse', 'netbeans', 'androidstudio'
     )
     
+    # Suspicious websites (not for class use)
+    $suspiciousWebsites = @(
+        # Social Media
+        'facebook.com', 'fb.com', 'instagram.com', 'twitter.com', 'x.com', 'tiktok.com',
+        'snapchat.com', 'reddit.com', 'pinterest.com', 'linkedin.com', 'tumblr.com',
+        # Video Sites
+        'youtube.com', 'youtu.be', 'netflix.com', 'twitch.tv', 'vimeo.com', 
+        'dailymotion.com', 'hulu.com', 'disneyplus.com',
+        # AI Sites (ChatGPT, etc)
+        'chat.openai.com', 'chatgpt.com', 'bard.google.com', 'claude.ai', 
+        'anthropic.com', 'you.com', 'perplexity.ai', 'character.ai',
+        # Gaming
+        'roblox.com', 'minecraft.net', 'steam.com', 'epicgames.com', 
+        'ea.com', 'activision.com', 'riot.com', 'valorant.com',
+        # Shopping/Entertainment
+        'amazon.com', 'ebay.com', 'shopee.com', 'lazada.com', 'alibaba.com',
+        'zalora.com', 'shein.com', 'spotify.com', 'soundcloud.com'
+    )
+    
     # Alert tracking
     $alertHistory = @{}
     $scanCount = 0
@@ -462,7 +553,7 @@ function Start-RealtimeMonitor {
                         
                         if ($isDomainMember) {
                             $pcActivity = Invoke-Command -ComputerName $pc -Credential $script:cred -ScriptBlock {
-                                param($suspicious, $productive)
+                                param($suspicious, $productive, $suspiciousUrls)
                                 
                                 # Get logged in user
                                 $loggedUser = (Get-WmiObject -Class Win32_ComputerSystem).UserName
@@ -498,6 +589,28 @@ function Start-RealtimeMonitor {
                                         }
                                     }
                                     $found
+                                }
+                                
+                                # Check for suspicious websites in browser windows
+                                $suspiciousWebsitesFound = @()
+                                $browserProcesses = Get-Process | Where-Object { 
+                                    $_.Name -match 'chrome|firefox|msedge|iexplore|opera|brave' -and 
+                                    $_.MainWindowTitle -ne ""
+                                }
+                                
+                                foreach ($browser in $browserProcesses) {
+                                    $windowTitle = $browser.MainWindowTitle.ToLower()
+                                    foreach ($url in $suspiciousUrls) {
+                                        if ($windowTitle -like "*$url*") {
+                                            $suspiciousWebsitesFound += [PSCustomObject]@{
+                                                Browser = $browser.Name
+                                                Website = $url
+                                                WindowTitle = $browser.MainWindowTitle
+                                                BrowserPID = $browser.Id
+                                            }
+                                            break
+                                        }
+                                    }
                                 }
                                 
                                 # Get active window
@@ -561,27 +674,47 @@ function Start-RealtimeMonitor {
                                     SuspiciousProcesses = $suspiciousProcs
                                     ProductiveApps = $productiveProcs.Count
                                     ProductiveProcesses = $productiveProcs
+                                    SuspiciousWebsites = $suspiciousWebsitesFound.Count
+                                    SuspiciousWebsitesList = $suspiciousWebsitesFound
                                     CPUUsage = $cpu
                                     MemoryUsage = $memUsage
                                 }
-                            } -ArgumentList $suspiciousApps, $productiveApps -ErrorAction Stop
+                            } -ArgumentList $suspiciousApps, $productiveApps, $suspiciousWebsites -ErrorAction Stop
                             
                             $activityResults += $pcActivity
                             $onlineCount++
                             
                             # Check for suspicious activity
-                            if ($pcActivity.SuspiciousApps -gt 0) {
+                            if ($pcActivity.SuspiciousApps -gt 0 -or $pcActivity.SuspiciousWebsites -gt 0) {
                                 $suspiciousCount++
                                 
-                                # Check if this is a new alert
-                                $alertKey = "$pc-$($pcActivity.SuspiciousProcesses[0].Name)"
-                                if (-not $alertHistory.ContainsKey($alertKey)) {
-                                    $alertHistory[$alertKey] = Get-Date
-                                    $newAlerts += [PSCustomObject]@{
-                                        PC = $pc
-                                        User = $pcActivity.LoggedInUser
-                                        App = $pcActivity.SuspiciousProcesses[0].Name
-                                        Window = $pcActivity.ActiveWindow
+                                # Check if this is a new alert (apps)
+                                if ($pcActivity.SuspiciousApps -gt 0) {
+                                    $alertKey = "$pc-APP-$($pcActivity.SuspiciousProcesses[0].Name)"
+                                    if (-not $alertHistory.ContainsKey($alertKey)) {
+                                        $alertHistory[$alertKey] = Get-Date
+                                        $newAlerts += [PSCustomObject]@{
+                                            PC = $pc
+                                            User = $pcActivity.LoggedInUser
+                                            Type = "App"
+                                            Name = $pcActivity.SuspiciousProcesses[0].Name
+                                            Details = $pcActivity.ActiveWindow
+                                        }
+                                    }
+                                }
+                                
+                                # Check if this is a new alert (websites)
+                                if ($pcActivity.SuspiciousWebsites -gt 0) {
+                                    $alertKey = "$pc-WEB-$($pcActivity.SuspiciousWebsitesList[0].Website)"
+                                    if (-not $alertHistory.ContainsKey($alertKey)) {
+                                        $alertHistory[$alertKey] = Get-Date
+                                        $newAlerts += [PSCustomObject]@{
+                                            PC = $pc
+                                            User = $pcActivity.LoggedInUser
+                                            Type = "Website"
+                                            Name = $pcActivity.SuspiciousWebsitesList[0].Website
+                                            Details = $pcActivity.SuspiciousWebsitesList[0].WindowTitle
+                                        }
                                     }
                                 }
                             }
@@ -611,9 +744,13 @@ function Start-RealtimeMonitor {
                 Write-Host ""
                 foreach ($alert in $newAlerts) {
                     Write-Host "  ⚠️  $($alert.PC) - $($alert.User)" -ForegroundColor Red
-                    Write-Host "     App: $($alert.App)" -ForegroundColor Red
-                    if ($alert.Window) {
-                        Write-Host "     Window: $($alert.Window)" -ForegroundColor DarkRed
+                    if ($alert.Type -eq "App") {
+                        Write-Host "     Suspicious App: $($alert.Name)" -ForegroundColor Red
+                    } else {
+                        Write-Host "     Suspicious Website: $($alert.Name)" -ForegroundColor Red
+                    }
+                    if ($alert.Details) {
+                        Write-Host "     Details: $($alert.Details)" -ForegroundColor DarkRed
                     }
                     Write-Host ""
                 }
@@ -711,7 +848,8 @@ function Start-RealtimeMonitor {
             $alertHistory.Keys | ForEach-Object {
                 $parts = $_ -split '-'
                 $alertTime = $alertHistory[$_]
-                Write-Host "  $($alertTime.ToString('HH:mm:ss')) - $($parts[0]) - $($parts[1])" -ForegroundColor Yellow
+                $alertType = if ($parts[1] -eq "APP") { "App" } else { "Web" }
+                Write-Host "  $($alertTime.ToString('HH:mm:ss')) - $($parts[0]) - [$alertType] $($parts[2])" -ForegroundColor Yellow
             }
             Write-Host ""
         }
