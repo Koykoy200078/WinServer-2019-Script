@@ -8,6 +8,18 @@ www.chatgpt.com
 api.openai.com
 platform.openai.com
 
+# OpenAI API Endpoints (Direct API access)
+api.openai.com/v1
+api.openai.com/v1/chat
+api.openai.com/v1/completions
+api.openai.com/v1/edits
+api.openai.com/v1/embeddings
+api.openai.com/v1/images
+api.openai.com/v1/models
+openaiapi-site.azureedge.net
+openaicomproductionae4b.blob.core.windows.net
+production-openaicom-storage.azureedge.net
+
 # Google AI
 bard.google.com
 gemini.google.com
@@ -16,12 +28,30 @@ ai.google.com
 makersuite.google.com
 colab.research.google.com
 
+# Google AI API Endpoints
+generativelanguage.googleapis.com
+generativelanguage.googleapis.com/v1
+generativelanguage.googleapis.com/v1beta
+aiplatform.googleapis.com
+ml.googleapis.com
+vision.googleapis.com
+language.googleapis.com
+texttospeech.googleapis.com
+speech.googleapis.com
+
 # Anthropic Claude
 claude.ai
 www.claude.ai
 anthropic.com
 www.anthropic.com
 console.anthropic.com
+
+# Anthropic Claude API Endpoints
+api.anthropic.com
+api.anthropic.com/v1
+api.anthropic.com/v1/messages
+api.anthropic.com/v1/complete
+claudeai-api.anthropic.com
 
 # Microsoft AI & Copilot
 bing.com/chat
@@ -271,6 +301,18 @@ ghostwriter.replit.com
 kite.com
 www.kite.com
 codex.openai.com
+
+# Tabnine API Endpoints
+api.tabnine.com
+update.tabnine.com
+s3.us-east-2.amazonaws.com/tabnine-pro
+
+# Codeium API Endpoints
+server.codeium.com
+api.codeium.com
+web.codeium.com
+
+# GitHub Copilot (includes all paths)
 copilot.github.com
 github.com/copilot
 github.com/features/copilot
@@ -278,10 +320,16 @@ vscode.dev/copilot
 marketplace.visualstudio.com/items?itemName=GitHub.copilot
 marketplace.visualstudio.com/items?itemName=GitHub.copilot-chat
 marketplace.visualstudio.com/items?itemName=GitHub.copilot-labs
+
+# AWS CodeWhisperer API Endpoints
 amazon.com/codewhisperer
 aws.amazon.com/codewhisperer
 codewhisperer.aws
 www.codewhisperer.aws
+codewhisperer.us-east-1.amazonaws.com
+api.codewhisperer.aws
+
+# Other AI Code Tools
 jetbrains.com/ai
 www.jetbrains.com/ai
 sourcegraph.com/cody
@@ -447,6 +495,49 @@ www.dialogflow.com
 botpress.com
 www.botpress.com
 
+# Hugging Face API Endpoints
+api-inference.huggingface.co
+api.huggingface.co
+cdn.huggingface.co
+s3.us-east-1.amazonaws.com/huggingface
+
+# Cohere API Endpoints
+api.cohere.ai
+api.cohere.com
+dashboard.cohere.ai
+dashboard.cohere.com
+
+# AI21 Labs API Endpoints
+api.ai21.com
+studio.ai21.com
+
+# Replicate API Endpoints
+api.replicate.com
+replicate.delivery
+
+# Stability AI API Endpoints
+api.stability.ai
+platform.stability.ai
+beta.dreamstudio.ai
+dreamstudio.ai
+
+# Together AI API Endpoints
+api.together.xyz
+api.together.ai
+
+# Groq API Endpoints
+api.groq.com
+console.groq.com
+
+# Mistral AI API Endpoints
+api.mistral.ai
+console.mistral.ai
+chat.mistral.ai
+
+# Anthropic/Claude alternate domains
+claude-api.anthropic.com
+api-prod.anthropic.com
+
 # AI Browser Extensions & Plugins
 chrome.google.com/webstore/search/ai
 addons.mozilla.org/search/?q=ai
@@ -457,3 +548,33 @@ chrome.google.com/webstore/detail/claude
 chrome.google.com/webstore/detail/bard
 addons.mozilla.org/addon/chatgpt
 addons.mozilla.org/addon/copilot
+
+# Additional API Gateways & CDN endpoints that could be used
+*.openai.com
+*.anthropic.com
+*.cohere.ai
+*.replicate.com
+*.stability.ai
+*.huggingface.co
+openai.azure.com
+*.openai.azure.com
+cognitiveservices.azure.com
+*.cognitiveservices.azure.com
+
+# Proxy/Wrapper Services (students might use these to bypass)
+chat-gpt.org
+freegpt.one
+chatgptproxy.me
+gpt4free.io
+you.com/api
+poe.com/api
+forefront.ai/api
+nat.dev
+api.nat.dev
+typing.ai
+api.typing.ai
+bing.com/turing
+www.bing.com/turing
+conversationhub.com
+api.conversationhub.com
+
