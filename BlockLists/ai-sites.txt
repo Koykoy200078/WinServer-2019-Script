@@ -34,6 +34,37 @@ github.com/features/copilot
 github.copilot.com
 www.github.copilot.com
 copilot.github.com
+
+# VS Code Copilot Backend (blocks data fetching, VSCode still works locally)
+api.github.com/copilot_internal
+copilot-proxy.githubusercontent.com
+copilot-telemetry.githubusercontent.com
+default.exp-tas.com
+vscode-sync.trafficmanager.net
+vscode-sync-insiders.trafficmanager.net
+vscode.dev/tunnel
+tunnels.api.visualstudio.com
+global.rel.tunnels.api.visualstudio.com
+
+# Windows Copilot Backend (blocks data fetching, Copilot UI still accessible locally)
+sydney.bing.com
+www.sydney.bing.com
+edgeservices.bing.com
+www.edgeservices.bing.com
+api.bing.microsoft.com
+www.api.bing.microsoft.com
+copilot-api.microsoft.com
+www.copilot-api.microsoft.com
+chat.bing.com
+www.chat.bing.com
+sydney-prod.azureedge.net
+www.sydney-prod.azureedge.net
+copilot.windows.com
+www.copilot.windows.com
+in.ai.microsoft.com
+www.in.ai.microsoft.com
+
+# Azure AI Services (keeps Azure portal working but blocks AI model APIs)
 azure.microsoft.com/cognitive-services
 azure.microsoft.com/services/cognitive-services
 mscopilot.lync.com

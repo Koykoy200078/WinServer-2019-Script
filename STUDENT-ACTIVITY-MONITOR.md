@@ -1,10 +1,13 @@
 # Student Activity Monitor - Quick Reference
 
 ## Menu Location
+
 **Option 25** - LAB MONITORING Section
 
 ## What It Does
+
 Real-time monitoring of student activities across all 35 PCs in your computer lab:
+
 - See who's logged in
 - Track active applications
 - Detect unauthorized/gaming software
@@ -14,7 +17,9 @@ Real-time monitoring of student activities across all 35 PCs in your computer la
 ## Features
 
 ### 🎯 **Automatic Detection**
+
 - **Suspicious Apps**: Games, chat apps, torrents (highlighted in RED)
+
   - Steam, Discord, Spotify, Telegram, WhatsApp
   - Roblox, Minecraft, Fortnite, Valorant
   - uTorrent, Netflix, Twitch, TikTok
@@ -27,6 +32,7 @@ Real-time monitoring of student activities across all 35 PCs in your computer la
 ### 📊 **Information Displayed**
 
 #### Quick Summary View:
+
 ```
 PC Name       | User              | Active Process      | CPU% | RAM% | Status
 ------------- | ----------------- | ------------------- | ---- | ---- | ------
@@ -36,18 +42,22 @@ PC-3          | No user logged in | explorer            | 2    | 12   | Idle
 ```
 
 #### Detailed View Options:
+
 1. **Specific PC Details**
+
    - Full process list
    - Window titles
    - Memory usage per app
    - Categorized apps
 
 2. **Suspicious Activity Report**
+
    - Only shows PCs with games/unauthorized apps
    - Process details (PID, memory, start time)
    - Current window title
 
 3. **All Active PCs**
+
    - List all PCs with logged in users
    - Current activity
    - Resource usage
@@ -59,6 +69,7 @@ PC-3          | No user logged in | explorer            | 2    | 12   | Idle
 ## Usage
 
 ### Option 1: Monitor ALL PCs
+
 ```
 Enter your choice (1-25): 25
 Select option (1-4): 1
@@ -67,6 +78,7 @@ Select option (1-4): 1
 ```
 
 ### Option 2: Monitor Specific PC
+
 ```
 Enter your choice (1-25): 25
 Select option (1-4): 2
@@ -76,6 +88,7 @@ Enter PC name: PC-15
 ```
 
 ### Option 3: Monitor Range
+
 ```
 Enter your choice (1-25): 25
 Select option (1-4): 3
@@ -86,6 +99,7 @@ Enter end number: 20
 ```
 
 ### Option 4: Monitor & Export Report
+
 ```
 Enter your choice (1-25): 25
 Select option (1-4): 4
@@ -97,11 +111,13 @@ Report saved: Reports/StudentActivity_2025-11-06_14-30-45.txt
 ## Color Coding
 
 ### Summary Table:
+
 - 🔴 **Red**: PC has suspicious/gaming apps running
 - 🔵 **Cyan**: PC is active with normal apps
 - ⚫ **Gray**: PC is idle (no user logged in)
 
 ### Detailed View:
+
 - 🔴 **Red**: Suspicious/unauthorized apps
 - 🟢 **Green**: Productive/educational apps
 - 🟡 **Yellow**: Active window/process
@@ -110,6 +126,7 @@ Report saved: Reports/StudentActivity_2025-11-06_14-30-45.txt
 ## Example Scenarios
 
 ### Scenario 1: During Class
+
 ```
 Teacher wants to check if students are following along:
 
@@ -125,6 +142,7 @@ Results:
 **Action**: Check PC-16 in detail, warn student
 
 ### Scenario 2: Exam Time
+
 ```
 Ensure no cheating/unauthorized tools:
 
@@ -140,6 +158,7 @@ No PCs found with suspicious activity ✓
 **Action**: If alerts found, investigate immediately
 
 ### Scenario 3: End of Day Report
+
 ```
 Generate activity log for admin:
 
@@ -153,6 +172,7 @@ Report includes:
 ```
 
 ### Scenario 4: Troubleshoot Slow PC
+
 ```
 Student reports PC-12 is slow:
 
@@ -170,12 +190,15 @@ Shows:
 ## Report Export
 
 ### Location:
+
 `D:\Projects\WinServer-2019-Script\Reports\`
 
 ### Filename Format:
+
 `StudentActivity_YYYY-MM-DD_HH-MM-SS.txt`
 
 ### Report Contains:
+
 ```
 ==================================================
 STUDENT ACTIVITY REPORT
@@ -209,31 +232,38 @@ SUSPICIOUS APPLICATIONS:
 ## Best Practices
 
 ### 1. Regular Monitoring
+
 - Check at start of each class
 - Random checks during class
 - End-of-day summary
 
 ### 2. Response to Alerts
+
 🔴 **High Priority** (During Exams):
+
 - Immediately check suspicious PCs
 - Remote lock if needed
 - Document violations
 
 🟡 **Medium Priority** (During Class):
+
 - Note the student
 - Verbal warning
 - Continue monitoring
 
 🟢 **Low Priority** (Free Time):
+
 - Informational only
 - Track trends
 
 ### 3. Privacy Considerations
+
 - Inform students monitoring is active
 - Use for educational purposes only
 - Respect privacy during breaks
 
 ### 4. Performance Tips
+
 - Monitor specific range during class (not all 35)
 - Use export for historical records
 - Run full scans during breaks
@@ -241,21 +271,25 @@ SUSPICIOUS APPLICATIONS:
 ## Troubleshooting
 
 ### "PC offline" errors
+
 - Check if PC is powered on
 - Verify network connection
 - Ensure WinRM is enabled
 
 ### "Access Denied"
+
 - Verify admin credentials
 - Check domain membership
 - Ensure proper permissions
 
 ### No suspicious apps detected when you see them
+
 - App names may differ from detection list
 - Use "View all processes" option
 - Check window titles
 
 ### Slow scanning
+
 - Normal for 35 PCs (1-3 minutes)
 - Monitor smaller ranges for speed
 - Close other network-intensive tasks
@@ -263,6 +297,7 @@ SUSPICIOUS APPLICATIONS:
 ## Tips for Teachers
 
 💡 **Tip 1**: Start of Class Check
+
 ```
 Quick scan to see attendance:
 Option 25 → 1 → No details needed
@@ -270,6 +305,7 @@ Look for "No user logged in" to find absent students
 ```
 
 💡 **Tip 2**: During Lab Work
+
 ```
 Monitor specific lab section:
 Option 25 → 3
@@ -277,6 +313,7 @@ Range: 1-15 (if teaching Section A)
 ```
 
 💡 **Tip 3**: Gaming Detection
+
 ```
 After break time:
 Option 25 → 1 → y → 2 (Suspicious only)
@@ -284,6 +321,7 @@ Catches students who didn't close games
 ```
 
 💡 **Tip 4**: Daily Reports
+
 ```
 End of each day:
 Option 25 → 4 (Export)
@@ -291,6 +329,7 @@ Keep for weekly review/compliance
 ```
 
 💡 **Tip 5**: Resource Hogs
+
 ```
 If lab is slow:
 Option 25 → 1 → y → 4 (All processes)
@@ -302,6 +341,7 @@ Find PCs using too much RAM/CPU
 ### Combined Workflows:
 
 **Workflow 1**: Catch Gaming During Class
+
 ```
 1. Option 25 - Monitor (find gaming PCs)
 2. Option 8/9 - Block web on those PCs
@@ -309,6 +349,7 @@ Find PCs using too much RAM/CPU
 ```
 
 **Workflow 2**: Pre-Exam Setup
+
 ```
 1. Option 25 - Check all PCs clean
 2. Option 10 - Block all web access
@@ -317,6 +358,7 @@ Find PCs using too much RAM/CPU
 ```
 
 **Workflow 3**: End of Day Maintenance
+
 ```
 1. Option 25 - Export daily report
 2. Option 18 - Cleanup backup files
@@ -327,14 +369,14 @@ Find PCs using too much RAM/CPU
 
 ## Quick Command Reference
 
-| Task | Menu Path |
-|------|-----------|
-| Monitor all PCs | 25 → 1 |
+| Task              | Menu Path              |
+| ----------------- | ---------------------- |
+| Monitor all PCs   | 25 → 1                 |
 | Check specific PC | 25 → 2 → Enter PC name |
-| Monitor range | 25 → 3 → Enter range |
-| Save report | 25 → 4 |
-| View suspicious | 25 → 1 → y → 2 |
-| View processes | 25 → 1 → y → 4 |
+| Monitor range     | 25 → 3 → Enter range   |
+| Save report       | 25 → 4                 |
+| View suspicious   | 25 → 1 → y → 2         |
+| View processes    | 25 → 1 → y → 4         |
 
 ---
 
