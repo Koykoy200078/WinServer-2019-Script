@@ -40,9 +40,25 @@ function Get-AllPCStatus {
                         $primaryIP = "No IP configured"
                     }
 
+                    # Get DNS servers configured on the primary network adapter
+                    $dnsServers = Get-DnsClientServerAddress -AddressFamily IPv4 | 
+                        Where-Object { 
+                            $_.ServerAddresses.Count -gt 0 -and 
+                            $_.InterfaceAlias -notlike "*Loopback*" -and
+                            $_.InterfaceAlias -notlike "*Virtual*"
+                        } |
+                        Select-Object -First 1 -ExpandProperty ServerAddresses
+
+                    if ($dnsServers) {
+                        $dnsDisplay = $dnsServers -join ", "
+                    } else {
+                        $dnsDisplay = "No DNS configured"
+                    }
+
                     [PSCustomObject]@{
                         Computer = $env:COMPUTERNAME
                         IPAddress = $primaryIP
+                        DNSServers = $dnsDisplay
                         DateTime = $date
                         TimeZone = $tz
                         Source   = $srcDisplay
@@ -51,6 +67,7 @@ function Get-AllPCStatus {
 
                 Write-Host "$($result.Computer) is ONLINE" -ForegroundColor Green
                 Write-Host "   IP Address: $($result.IPAddress)" -ForegroundColor Cyan
+                Write-Host "   DNS Servers: $($result.DNSServers)" -ForegroundColor Cyan
                 Write-Host "   Date/Time : $($result.DateTime)"
                 Write-Host "   TimeZone  : $($result.TimeZone)"
                 Write-Host "   Source    : $($result.Source)"
