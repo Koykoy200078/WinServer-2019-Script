@@ -1005,3 +1005,190 @@ function Test-AndroidJavaEnvironment {
     Write-Host ""
     Pause
 }
+
+function Clear-TempFiles {
+    param(
+        [Parameter(Mandatory=$true)]
+        [array]$Targets
+    )
+    
+    Write-Host "===== TEMPORARY FILES CLEANUP =====" -ForegroundColor Cyan
+    Write-Host "Cleaning temporary files on $($Targets.Count) PC(s)..." -ForegroundColor Yellow
+    Write-Host "Target Domain: $script:targetDomain" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Locations to clean:" -ForegroundColor Yellow
+    Write-Host "  - C:\Windows\Temp" -ForegroundColor Gray
+    Write-Host "  - %TEMP% (User temp folder)" -ForegroundColor Gray
+    Write-Host "  - C:\Windows\Prefetch" -ForegroundColor Gray
+    Write-Host ""
+    
+    $cleanupResults = @()
+    $successCount = 0
+    $failCount = 0
+    $totalFilesDeleted = 0
+    $totalSpaceFreed = 0
+    
+    foreach ($pc in $Targets) {
+        Write-Host "Cleaning $pc..." -ForegroundColor Gray
+        
+        try {
+            if (Test-WSMan -ComputerName $pc -ErrorAction Stop) {
+                $isDomainMember = Test-DomainMembership -ComputerName $pc
+                
+                if ($isDomainMember) {
+                    $result = Invoke-Command -ComputerName $pc -Credential $script:cred -ScriptBlock {
+                        $report = @{
+                            Computer = $env:COMPUTERNAME
+                            Success = $false
+                            WindowsTempFiles = 0
+                            WindowsTempSize = 0
+                            UserTempFiles = 0
+                            UserTempSize = 0
+                            PrefetchFiles = 0
+                            PrefetchSize = 0
+                            TotalFiles = 0
+                            TotalSize = 0
+                            Errors = @()
+                        }
+                        
+                        try {
+                            # Clean C:\Windows\Temp
+                            $windowsTempPath = "C:\Windows\Temp"
+                            if (Test-Path $windowsTempPath) {
+                                try {
+                                    $beforeWinTemp = Get-ChildItem -Path $windowsTempPath -Recurse -Force -ErrorAction SilentlyContinue
+                                    $winTempSize = ($beforeWinTemp | Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum
+                                    $winTempCount = ($beforeWinTemp | Measure-Object).Count
+                                    
+                                    Get-ChildItem -Path $windowsTempPath -Recurse -Force -ErrorAction SilentlyContinue | 
+                                        Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
+                                    
+                                    $report.WindowsTempFiles = $winTempCount
+                                    $report.WindowsTempSize = [math]::Round($winTempSize / 1MB, 2)
+                                } catch {
+                                    $report.Errors += "Windows Temp: $($_.Exception.Message)"
+                                }
+                            }
+                            
+                            # Clean User Temp folder (%TEMP%)
+                            $userTempPath = $env:TEMP
+                            if (Test-Path $userTempPath) {
+                                try {
+                                    $beforeUserTemp = Get-ChildItem -Path $userTempPath -Recurse -Force -ErrorAction SilentlyContinue
+                                    $userTempSize = ($beforeUserTemp | Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum
+                                    $userTempCount = ($beforeUserTemp | Measure-Object).Count
+                                    
+                                    Get-ChildItem -Path $userTempPath -Recurse -Force -ErrorAction SilentlyContinue | 
+                                        Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
+                                    
+                                    $report.UserTempFiles = $userTempCount
+                                    $report.UserTempSize = [math]::Round($userTempSize / 1MB, 2)
+                                } catch {
+                                    $report.Errors += "User Temp: $($_.Exception.Message)"
+                                }
+                            }
+                            
+                            # Clean Prefetch
+                            $prefetchPath = "C:\Windows\Prefetch"
+                            if (Test-Path $prefetchPath) {
+                                try {
+                                    $beforePrefetch = Get-ChildItem -Path $prefetchPath -Filter "*.pf" -Force -ErrorAction SilentlyContinue
+                                    $prefetchSize = ($beforePrefetch | Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum
+                                    $prefetchCount = ($beforePrefetch | Measure-Object).Count
+                                    
+                                    Get-ChildItem -Path $prefetchPath -Filter "*.pf" -Force -ErrorAction SilentlyContinue | 
+                                        Remove-Item -Force -ErrorAction SilentlyContinue
+                                    
+                                    $report.PrefetchFiles = $prefetchCount
+                                    $report.PrefetchSize = [math]::Round($prefetchSize / 1MB, 2)
+                                } catch {
+                                    $report.Errors += "Prefetch: $($_.Exception.Message)"
+                                }
+                            }
+                            
+                            $report.TotalFiles = $report.WindowsTempFiles + $report.UserTempFiles + $report.PrefetchFiles
+                            $report.TotalSize = $report.WindowsTempSize + $report.UserTempSize + $report.PrefetchSize
+                            $report.Success = $true
+                            
+                        } catch {
+                            $report.Errors += "General Error: $($_.Exception.Message)"
+                        }
+                        
+                        return $report
+                    } -ErrorAction Stop
+                    
+                    $cleanupResults += $result
+                    
+                    if ($result.Success) {
+                        $successCount++
+                        $totalFilesDeleted += $result.TotalFiles
+                        $totalSpaceFreed += $result.TotalSize
+                        
+                        Write-Host "  ✓ $($result.Computer) - Cleaned $($result.TotalFiles) files ($($result.TotalSize) MB)" -ForegroundColor Green
+                        Write-Host "      Windows Temp: $($result.WindowsTempFiles) files ($($result.WindowsTempSize) MB)" -ForegroundColor DarkGray
+                        Write-Host "      User Temp: $($result.UserTempFiles) files ($($result.UserTempSize) MB)" -ForegroundColor DarkGray
+                        Write-Host "      Prefetch: $($result.PrefetchFiles) files ($($result.PrefetchSize) MB)" -ForegroundColor DarkGray
+                        
+                        if ($result.Errors.Count -gt 0) {
+                            Write-Host "      Warnings:" -ForegroundColor Yellow
+                            foreach ($err in $result.Errors) {
+                                Write-Host "        - $err" -ForegroundColor DarkYellow
+                            }
+                        }
+                    } else {
+                        $failCount++
+                        Write-Host "  ✗ $($result.Computer) - FAILED" -ForegroundColor Red
+                        foreach ($err in $result.Errors) {
+                            Write-Host "      - $err" -ForegroundColor Red
+                        }
+                    }
+                } else {
+                    $failCount++
+                    Write-Host "  ⊗ $pc - Not in $script:targetDomain domain" -ForegroundColor Yellow
+                }
+            } else {
+                $failCount++
+                Write-Host "  ✗ $pc - Offline or WinRM unavailable" -ForegroundColor Red
+            }
+        } catch {
+            $failCount++
+            Write-Host "  ✗ $pc - Error: $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+    
+    Write-Host ""
+    Write-Host "=============================================" -ForegroundColor Cyan
+    Write-Host "     CLEANUP SUMMARY                         " -ForegroundColor Cyan
+    Write-Host "=============================================" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Successful: $successCount" -ForegroundColor Green
+    Write-Host "Failed: $failCount" -ForegroundColor $(if ($failCount -gt 0) { "Red" } else { "Gray" })
+    Write-Host "Total Files Deleted: $totalFilesDeleted" -ForegroundColor White
+    Write-Host "Total Space Freed: $([math]::Round($totalSpaceFreed, 2)) MB ($([math]::Round($totalSpaceFreed / 1024, 2)) GB)" -ForegroundColor Cyan
+    Write-Host ""
+    
+    # Detailed breakdown table
+    if ($cleanupResults.Count -gt 0) {
+        Write-Host "DETAILED BREAKDOWN:" -ForegroundColor Yellow
+        Write-Host "PC Name       | Files | Size (MB) | Win Temp | User Temp | Prefetch | Status" -ForegroundColor Yellow
+        Write-Host "------------- | ----- | --------- | -------- | --------- | -------- | ------" -ForegroundColor DarkGray
+        
+        foreach ($result in $cleanupResults | Sort-Object Computer) {
+            $pcName = $result.Computer.PadRight(13)
+            $files = $result.TotalFiles.ToString().PadRight(5)
+            $size = $result.TotalSize.ToString("0.00").PadRight(9)
+            $winTemp = $result.WindowsTempFiles.ToString().PadRight(8)
+            $userTemp = $result.UserTempFiles.ToString().PadRight(9)
+            $prefetch = $result.PrefetchFiles.ToString().PadRight(8)
+            $status = if ($result.Success) { "✓ OK" } else { "✗ FAIL" }
+            $color = if ($result.Success) { "Green" } else { "Red" }
+            
+            Write-Host "$pcName | $files | $size | $winTemp | $userTemp | $prefetch | $status" -ForegroundColor $color
+        }
+    }
+    
+    Write-Host ""
+    Write-Host "=============================================" -ForegroundColor Cyan
+    Write-Host ""
+    Pause
+}

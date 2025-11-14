@@ -135,9 +135,9 @@ function Show-Menu {
     Write-Host "  22. Export MySQL Databases from a range of PCs"
     Write-Host "  23. Export MySQL Databases from ALL PCs"
     Write-Host "  24. Check/Fix Android & Java Environment Variables"
-    Write-Host ""
-    Write-Host "█ LAB MONITORING" -ForegroundColor Green
-    Write-Host "  25. Real-Time Browser Search Monitor - Track student searches" -ForegroundColor Cyan
+    Write-Host "  25. Clean Temporary Files on a single PC"
+    Write-Host "  26. Clean Temporary Files on a range of PCs"
+    Write-Host "  27. Clean Temporary Files on ALL PCs (PC-1 to PC-35)"
     Write-Host ""
     Write-Host "=============================================" -ForegroundColor Cyan
     Write-Host "Type 'clear' to clear screen | Type 'exit' to quit" -ForegroundColor DarkGray
@@ -321,7 +321,7 @@ $null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         # Main program loop
 do {
     Show-Menu
-    $choice = Read-Host "Enter your choice (1-25, 'clear', or 'exit')"
+    $choice = Read-Host "Enter your choice (1-27, 'clear', or 'exit')"
 
     # Handle special commands
     if ($choice -eq 'exit') {
@@ -502,38 +502,21 @@ do {
             Test-AndroidJavaEnvironment
         }
         
-        # ===== LAB MONITORING =====
+        # ===== TEMP CLEANING =====
         '25' {
-            Write-Host ""
-            Write-Host "Real-Time Browser Search Monitor" -ForegroundColor Cyan
-            Write-Host "Options:" -ForegroundColor Yellow
-            Write-Host "  1. Monitor ALL PCs (PC-1 to PC-35)"
-            Write-Host "  2. Monitor specific PC"
-            Write-Host "  3. Monitor range of PCs"
-            Write-Host ""
-            
-            $monitorChoice = Read-Host "Select option (1-3)"
-            
-            switch ($monitorChoice) {
-                '1' {
-                    $targets = foreach ($i in 1..35) { "PC-$i" }
-                    Start-BrowserSearchMonitor -Targets $targets
-                }
-                '2' {
-                    $pc = Read-Host "Enter PC name (e.g., PC-1)"
-                    $targets = @($pc)
-                    Start-BrowserSearchMonitor -Targets $targets
-                }
-                '3' {
-                    $start = Read-Host "Enter start number (e.g., 5)"
-                    $end   = Read-Host "Enter end number (e.g., 10)"
-                    $targets = foreach ($i in $start..$end) { "PC-$i" }
-                    Start-BrowserSearchMonitor -Targets $targets
-                }
-                default {
-                    Write-Host "Invalid choice" -ForegroundColor Red
-                }
-            }
+            $pc = Read-Host "Enter the PC name (e.g., PC-1)"
+            $targets = @($pc)
+            Clear-TempFiles -Targets $targets
+        }
+        '26' {
+            $start = Read-Host "Enter start number (e.g., 5)"
+            $end   = Read-Host "Enter end number (e.g., 10)"
+            $targets = foreach ($i in $start..$end) { "PC-$i" }
+            Clear-TempFiles -Targets $targets
+        }
+        '27' {
+            $targets = foreach ($i in 1..35) { "PC-$i" }
+            Clear-TempFiles -Targets $targets
         }
         
         default {
