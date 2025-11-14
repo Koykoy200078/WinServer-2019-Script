@@ -111,6 +111,7 @@ function Show-Menu {
     Write-Host "  5.  Restart a single PC"
     Write-Host "  6.  Restart a range of PCs"
     Write-Host "  7.  Restart ALL PCs (PC-1 to PC-35)"
+    Write-Host "  28. Execute Custom PowerShell Command" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "█ WEB BLOCKING" -ForegroundColor Yellow
     Write-Host "  8.  Block Web/DNS access on a single PC"
@@ -326,6 +327,62 @@ do {
         }
         '27' {
             Test-AndroidJavaEnvironment
+        }
+        '28' {
+            Write-Host ""
+            Write-Host "Execute Custom PowerShell Command" -ForegroundColor Cyan
+            Write-Host "Options:" -ForegroundColor Yellow
+            Write-Host "  1. Execute on specific PC"
+            Write-Host "  2. Execute on range of PCs"
+            Write-Host "  3. Execute on ALL PCs (PC-1 to PC-35)"
+            Write-Host ""
+            
+            $execChoice = Read-Host "Select option (1-3)"
+            
+            switch ($execChoice) {
+                '1' {
+                    $pc = Read-Host "Enter PC name (e.g., PC-1)"
+                    Write-Host ""
+                    Write-Host "Enter PowerShell command to execute:" -ForegroundColor Yellow
+                    $command = Read-Host
+                    
+                    if (-not [string]::IsNullOrWhiteSpace($command)) {
+                        $targets = @($pc)
+                        Invoke-CustomPSCommand -Targets $targets -Command $command
+                    } else {
+                        Write-Host "No command provided." -ForegroundColor Red
+                    }
+                }
+                '2' {
+                    $start = Read-Host "Enter start number (e.g., 5)"
+                    $end   = Read-Host "Enter end number (e.g., 10)"
+                    Write-Host ""
+                    Write-Host "Enter PowerShell command to execute:" -ForegroundColor Yellow
+                    $command = Read-Host
+                    
+                    if (-not [string]::IsNullOrWhiteSpace($command)) {
+                        $targets = foreach ($i in $start..$end) { "PC-$i" }
+                        Invoke-CustomPSCommand -Targets $targets -Command $command
+                    } else {
+                        Write-Host "No command provided." -ForegroundColor Red
+                    }
+                }
+                '3' {
+                    Write-Host ""
+                    Write-Host "Enter PowerShell command to execute:" -ForegroundColor Yellow
+                    $command = Read-Host
+                    
+                    if (-not [string]::IsNullOrWhiteSpace($command)) {
+                        $targets = foreach ($i in 1..35) { "PC-$i" }
+                        Invoke-CustomPSCommand -Targets $targets -Command $command
+                    } else {
+                        Write-Host "No command provided." -ForegroundColor Red
+                    }
+                }
+                default {
+                    Write-Host "Invalid choice" -ForegroundColor Red
+                }
+            }
         }
         
         # ===== LAB MONITORING =====

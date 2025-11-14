@@ -168,3 +168,135 @@ function Invoke-DeepScan {
     
     Pause
 }
+
+function Invoke-CustomPSCommand {
+    param(
+        [Parameter(Mandatory=$true)]
+        [array]$Targets,
+        [Parameter(Mandatory=$true)]
+        [string]$Command
+    )
+    
+    Write-Host "===== EXECUTE CUSTOM POWERSHELL COMMAND =====" -ForegroundColor Cyan
+    Write-Host "Command to execute: " -ForegroundColor Yellow
+    Write-Host "  $Command" -ForegroundColor White
+    Write-Host ""
+    Write-Host "Target PCs: $($Targets.Count)" -ForegroundColor Cyan
+    Write-Host ""
+    
+    $confirm = Read-Host "Are you sure you want to execute this command? (Y/N)"
+    
+    if ($confirm -ne 'Y' -and $confirm -ne 'y') {
+        Write-Host "Command execution cancelled." -ForegroundColor Yellow
+        Pause
+        return
+    }
+    
+    Write-Host ""
+    Write-Host "Executing command on target PCs..." -ForegroundColor Cyan
+    Write-Host ""
+    
+    $results = @()
+    $successCount = 0
+    $failCount = 0
+    
+    foreach ($pc in $Targets) {
+        Write-Host "Executing on $pc..." -ForegroundColor Gray
+        try {
+            if (Test-WSMan -ComputerName $pc -ErrorAction Stop) {
+                $isDomainMember = Test-DomainMembership -ComputerName $pc
+                
+                if ($isDomainMember) {
+                    $result = Invoke-Command -ComputerName $pc -Credential $script:cred -ArgumentList $Command -ScriptBlock {
+                        param($cmd)
+                        
+                        try {
+                            # Execute the command and capture output
+                            $output = Invoke-Expression $cmd 2>&1 | Out-String
+                            
+                            return @{
+                                Computer = $env:COMPUTERNAME
+                                Success = $true
+                                Output = $output
+                                Error = $null
+                            }
+                        }
+                        catch {
+                            return @{
+                                Computer = $env:COMPUTERNAME
+                                Success = $false
+                                Output = $null
+                                Error = $_.Exception.Message
+                            }
+                        }
+                    } -ErrorAction Stop
+                    
+                    $results += $result
+                    
+                    if ($result.Success) {
+                        $successCount++
+                        Write-Host "  ✓ $($result.Computer) - SUCCESS" -ForegroundColor Green
+                        
+                        if (-not [string]::IsNullOrWhiteSpace($result.Output)) {
+                            Write-Host "    Output:" -ForegroundColor Cyan
+                            $outputLines = $result.Output -split "`n" | Select-Object -First 5
+                            foreach ($line in $outputLines) {
+                                if (-not [string]::IsNullOrWhiteSpace($line)) {
+                                    Write-Host "      $line" -ForegroundColor Gray
+                                }
+                            }
+                            if ($result.Output.Split("`n").Count -gt 5) {
+                                Write-Host "      ... (output truncated)" -ForegroundColor DarkGray
+                            }
+                        }
+                    } else {
+                        $failCount++
+                        Write-Host "  ✗ $($result.Computer) - FAILED" -ForegroundColor Red
+                        Write-Host "    Error: $($result.Error)" -ForegroundColor Red
+                    }
+                } else {
+                    $failCount++
+                    Write-Host "  ✗ $pc - NOT in $script:targetDomain domain - SKIPPING" -ForegroundColor Red
+                }
+            }
+        }
+        catch {
+            $failCount++
+            Write-Host "  ✗ $pc - OFFLINE or unreachable" -ForegroundColor DarkGray
+        }
+    }
+    
+    # Summary Report
+    Write-Host ""
+    Write-Host "===== EXECUTION SUMMARY =====" -ForegroundColor Cyan
+    Write-Host "Total PCs targeted: $($Targets.Count)" -ForegroundColor White
+    Write-Host "Successful executions: $successCount" -ForegroundColor Green
+    Write-Host "Failed executions: $failCount" -ForegroundColor Red
+    Write-Host ""
+    
+    # Ask if user wants to see full output
+    if ($successCount -gt 0) {
+        $viewFull = Read-Host "Do you want to see full output from all PCs? (Y/N)"
+        
+        if ($viewFull -eq 'Y' -or $viewFull -eq 'y') {
+            Write-Host ""
+            Write-Host "===== FULL OUTPUT =====" -ForegroundColor Cyan
+            
+            foreach ($result in $results) {
+                if ($result.Success) {
+                    Write-Host ""
+                    Write-Host "===== $($result.Computer) =====" -ForegroundColor Green
+                    if (-not [string]::IsNullOrWhiteSpace($result.Output)) {
+                        Write-Host $result.Output -ForegroundColor White
+                    } else {
+                        Write-Host "(No output)" -ForegroundColor Gray
+                    }
+                    Write-Host "================================" -ForegroundColor DarkGray
+                }
+            }
+        }
+    }
+    
+    Write-Host ""
+    Pause
+}

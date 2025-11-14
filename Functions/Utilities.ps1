@@ -740,17 +740,26 @@ function Test-AndroidJavaEnvironment {
                             $report.AndroidHomeExists = $true
                             $report.AndroidHomeValue = $androidHome
                             
-                            # Expand environment variables
-                            $expandedPath = [System.Environment]::ExpandEnvironmentVariables($androidHome)
-                            if (Test-Path $expandedPath) {
+                            # Check if it's the expected path (with or without expansion)
+                            $expectedPath = "%LOCALAPPDATA%\Android\Sdk"
+                            if ($androidHome -eq $expectedPath) {
                                 $report.AndroidHomeValid = $true
+                            } else {
+                                # Expand environment variables and check if path exists
+                                $expandedPath = [System.Environment]::ExpandEnvironmentVariables($androidHome)
+                                if (Test-Path $expandedPath) {
+                                    $report.AndroidHomeValid = $true
+                                }
                             }
                         }
                         
                         # Check if platform-tools in Path
                         $machinePath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
-                        $platformTools = "$env:LOCALAPPDATA\Android\Sdk\platform-tools"
-                        if ($machinePath -like "*$platformTools*" -or $machinePath -like "*%LOCALAPPDATA%\Android\Sdk\platform-tools*") {
+                        $platformTools = "%LOCALAPPDATA%\Android\Sdk\platform-tools"
+                        $platformToolsExpanded = "$env:LOCALAPPDATA\Android\Sdk\platform-tools"
+                        
+                        # Check both unexpanded and expanded versions
+                        if ($machinePath -like "*$platformTools*" -or $machinePath -like "*$platformToolsExpanded*") {
                             $report.AndroidPathExists = $true
                         }
                         
@@ -857,7 +866,7 @@ function Test-AndroidJavaEnvironment {
                             
                             $fixed = $false
                             
-                            # Fix ANDROID_HOME
+                            # Fix ANDROID_HOME (use unexpanded format)
                             if ($fixAndroid) {
                                 $androidSdkPath = "%LOCALAPPDATA%\Android\Sdk"
                                 [System.Environment]::SetEnvironmentVariable("ANDROID_HOME", $androidSdkPath, "Machine")
@@ -865,18 +874,21 @@ function Test-AndroidJavaEnvironment {
                                 $fixed = $true
                             }
                             
-                            # Fix platform-tools in Path
+                            # Fix platform-tools in Path (use unexpanded format)
                             if ($fixAndroidPath) {
                                 $platformToolsPath = "%LOCALAPPDATA%\Android\Sdk\platform-tools"
                                 $currentPath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
                                 
-                                # Remove old Android paths if any
-                                $pathArray = $currentPath -split ";" | Where-Object { $_ -notlike "*Android\Sdk\platform-tools*" }
+                                # Remove old Android paths (both expanded and unexpanded)
+                                $pathArray = $currentPath -split ";" | Where-Object { 
+                                    $_ -notlike "*Android\Sdk\platform-tools*" -and 
+                                    $_ -ne $platformToolsPath 
+                                }
                                 
-                                # Add new path
+                                # Add new path with unexpanded format
                                 $newPath = ($pathArray + $platformToolsPath) -join ";"
                                 [System.Environment]::SetEnvironmentVariable("Path", $newPath, "Machine")
-                                Write-Host "  Added platform-tools to Path"
+                                Write-Host "  Added platform-tools to Path: $platformToolsPath"
                                 $fixed = $true
                             }
                             
