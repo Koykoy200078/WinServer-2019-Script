@@ -792,11 +792,20 @@ function Test-AndroidJavaEnvironment {
                     if ($result.AndroidHomeValid) {
                         Write-Host "    ANDROID_HOME: " -NoNewline
                         Write-Host "VALID" -ForegroundColor Green
-                        Write-Host "      Path: $($result.AndroidHomeValue)" -ForegroundColor Gray
+                        # Convert expanded path to unexpanded format for display
+                        $displayPath = $result.AndroidHomeValue
+                        if ($displayPath -match "C:\\Users\\[^\\]+\\AppData\\Local\\Android\\Sdk") {
+                            $displayPath = "%LOCALAPPDATA%\Android\Sdk"
+                        }
+                        Write-Host "      Path: $displayPath" -ForegroundColor Gray
                     } elseif ($result.AndroidHomeExists) {
                         Write-Host "    ANDROID_HOME: " -NoNewline
                         Write-Host "INVALID PATH" -ForegroundColor Red
-                        Write-Host "      Path: $($result.AndroidHomeValue)" -ForegroundColor Gray
+                        $displayPath = $result.AndroidHomeValue
+                        if ($displayPath -match "C:\\Users\\[^\\]+\\AppData\\Local\\Android\\Sdk") {
+                            $displayPath = "%LOCALAPPDATA%\Android\Sdk"
+                        }
+                        Write-Host "      Path: $displayPath" -ForegroundColor Gray
                     } else {
                         Write-Host "    ANDROID_HOME: " -NoNewline
                         Write-Host "NOT SET" -ForegroundColor Yellow
@@ -879,16 +888,17 @@ function Test-AndroidJavaEnvironment {
                                 $platformToolsPath = "%LOCALAPPDATA%\Android\Sdk\platform-tools"
                                 $currentPath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
                                 
-                                # Remove old Android paths (both expanded and unexpanded)
+                                # Remove all Android paths (both expanded and unexpanded formats)
                                 $pathArray = $currentPath -split ";" | Where-Object { 
                                     $_ -notlike "*Android\Sdk\platform-tools*" -and 
-                                    $_ -ne $platformToolsPath 
+                                    $_ -ne $platformToolsPath -and
+                                    $_ -notmatch "C:\\Users\\[^\\]+\\AppData\\Local\\Android\\Sdk\\platform-tools"
                                 }
                                 
                                 # Add new path with unexpanded format
                                 $newPath = ($pathArray + $platformToolsPath) -join ";"
                                 [System.Environment]::SetEnvironmentVariable("Path", $newPath, "Machine")
-                                Write-Host "  Added platform-tools to Path: $platformToolsPath"
+                                Write-Host "  Set platform-tools Path to: $platformToolsPath"
                                 $fixed = $true
                             }
                             
