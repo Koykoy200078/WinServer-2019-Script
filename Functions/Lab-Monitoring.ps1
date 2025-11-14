@@ -61,14 +61,28 @@ function Start-BrowserSearchMonitor {
                                 # Get logged in user
                                 $loggedUser = (Get-WmiObject -Class Win32_ComputerSystem).UserName
                                 
+                                # First, get ALL browser processes for debugging
+                                $allBrowserProcs = Get-Process -ErrorAction SilentlyContinue | Where-Object { 
+                                    $_.Name -match 'chrome|firefox|msedge|MicrosoftEdge|iexplore|opera|brave'
+                                }
+                                
                                 # Get all browser processes with window titles
-                                $browsers = Get-Process | Where-Object { 
-                                    $_.Name -match 'chrome|firefox|msedge|iexplore|opera|brave' -and 
-                                    $_.MainWindowTitle -ne "" -and
-                                    $_.MainWindowTitle -notmatch 'New Tab|about:blank|^$'
+                                # Edge can be "msedge" or "MicrosoftEdge", Chrome is "chrome", Firefox is "firefox"
+                                $browsers = $allBrowserProcs | Where-Object { 
+                                    ($_.MainWindowTitle -ne $null) -and
+                                    ($_.MainWindowTitle.Trim() -ne "") -and
+                                    ($_.MainWindowTitle -notmatch '^New Tab$|^about:blank|^Untitled|^$|^Settings|^Downloads|^Extensions')
                                 } | Select-Object Name, MainWindowTitle, @{
                                     Name='Memory(MB)';
                                     Expression={[math]::Round($_.WorkingSet64/1MB, 2)}
+                                }
+                                
+                                [PSCustomObject]@{
+                                    Computer = $env:COMPUTERNAME
+                                    LoggedInUser = if ($loggedUser) { $loggedUser } else { "No user" }
+                                    BrowserTabs = $browsers
+                                    TabCount = $browsers.Count
+                                    TotalBrowserProcs = $allBrowserProcs.Count
                                 }
                                 
                                 [PSCustomObject]@{
@@ -80,6 +94,15 @@ function Start-BrowserSearchMonitor {
                             } -ErrorAction Stop
                             
                             $onlineCount++
+                            
+                            # Debug: Show browser detection info
+                            if ($browserData.TabCount -eq 0 -and $browserData.LoggedInUser -ne "No user") {
+                                if ($browserData.TotalBrowserProcs -gt 0) {
+                                    Write-Host "  ℹ️  $pc - User: $($browserData.LoggedInUser) - $($browserData.TotalBrowserProcs) browser(s) running but no valid tabs detected" -ForegroundColor Yellow
+                                } else {
+                                    Write-Host "  ℹ️  $pc - User: $($browserData.LoggedInUser) - No browser processes detected" -ForegroundColor DarkGray
+                                }
+                            }
                             
                             if ($browserData.LoggedInUser -ne "No user" -and $browserData.TabCount -gt 0) {
                                 foreach ($tab in $browserData.BrowserTabs) {
@@ -105,7 +128,7 @@ function Start-BrowserSearchMonitor {
                                         
                                         # Display new search in real-time
                                         $timestamp = $logEntry.Timestamp.ToString('HH:mm:ss')
-                                        $browserShort = $logEntry.Browser -replace 'chrome', 'Chrome' -replace 'firefox', 'Firefox' -replace 'msedge', 'Edge'
+                                        $browserShort = $logEntry.Browser -replace 'chrome', 'Chrome' -replace 'firefox', 'Firefox' -replace 'msedge|MicrosoftEdge', 'Edge' -replace 'iexplore', 'IE' -replace 'opera', 'Opera' -replace 'brave', 'Brave'
                                         
                                         # Color code based on content
                                         $color = "Cyan"
