@@ -25,8 +25,14 @@ function Get-AllPCStatus {
                         $srcDisplay = $src
                     }
 
+                    # Get IP addresses (IPv4 only)
+                    $ipAddresses = Get-NetIPAddress -AddressFamily IPv4 | 
+                        Where-Object { $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.254.*" } |
+                        Select-Object -ExpandProperty IPAddress
+
                     [PSCustomObject]@{
                         Computer = $env:COMPUTERNAME
+                        IPAddress = ($ipAddresses -join ", ")
                         DateTime = $date
                         TimeZone = $tz
                         Source   = $srcDisplay
@@ -34,6 +40,7 @@ function Get-AllPCStatus {
                 }
 
                 Write-Host "$($result.Computer) is ONLINE" -ForegroundColor Green
+                Write-Host "   IP Address: $($result.IPAddress)" -ForegroundColor Cyan
                 Write-Host "   Date/Time : $($result.DateTime)"
                 Write-Host "   TimeZone  : $($result.TimeZone)"
                 Write-Host "   Source    : $($result.Source)"
