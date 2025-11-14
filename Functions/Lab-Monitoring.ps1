@@ -1,6 +1,294 @@
 # Lab Monitoring Functions
 # Functions for monitoring student activities in computer lab
 
+function Start-BrowserSearchMonitor {
+    param(
+        [Parameter(Mandatory=$false)]
+        [array]$Targets,
+        [int]$RefreshInterval = 5
+    )
+    
+    # Set default targets if not provided
+    if (-not $Targets) {
+        $Targets = 1..35 | ForEach-Object { "PC-$_" }
+    }
+    
+    # Search log tracking
+    $searchLog = @()
+    $scanCount = 0
+    $startTime = Get-Date
+    
+    Write-Host "=============================================" -ForegroundColor Cyan
+    Write-Host "  REAL-TIME BROWSER SEARCH MONITOR          " -ForegroundColor Cyan
+    Write-Host "=============================================" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Monitoring: $($Targets.Count) PCs" -ForegroundColor White
+    Write-Host "Refresh Interval: $RefreshInterval seconds" -ForegroundColor White
+    Write-Host "Domain: $script:targetDomain" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Tracking browser activity and search queries..." -ForegroundColor Yellow
+    Write-Host "Press Ctrl+C to stop monitoring and save log..." -ForegroundColor Yellow
+    Write-Host ""
+    Start-Sleep -Seconds 2
+    
+    try {
+        while ($true) {
+            $scanCount++
+            $currentTime = Get-Date
+            $elapsed = $currentTime - $startTime
+            
+            Clear-Host
+            
+            # Header
+            Write-Host "=============================================" -ForegroundColor Cyan
+            Write-Host "  BROWSER SEARCH MONITOR - SCAN #$scanCount" -ForegroundColor Cyan
+            Write-Host "=============================================" -ForegroundColor Cyan
+            Write-Host "Time: $($currentTime.ToString('HH:mm:ss')) | Elapsed: $($elapsed.ToString('hh\:mm\:ss')) | Interval: ${RefreshInterval}s" -ForegroundColor White
+            Write-Host "Press Ctrl+C to stop and save log" -ForegroundColor Yellow
+            Write-Host "=============================================" -ForegroundColor Cyan
+            Write-Host ""
+            
+            $onlineCount = 0
+            $newSearches = 0
+            
+            foreach ($pc in $Targets) {
+                try {
+                    if (Test-WSMan -ComputerName $pc -ErrorAction SilentlyContinue) {
+                        $isDomainMember = Test-DomainMembership -ComputerName $pc
+                        
+                        if ($isDomainMember) {
+                            $browserData = Invoke-Command -ComputerName $pc -Credential $script:cred -ScriptBlock {
+                                # Get logged in user
+                                $loggedUser = (Get-WmiObject -Class Win32_ComputerSystem).UserName
+                                
+                                # Get all browser processes with window titles
+                                $browsers = Get-Process | Where-Object { 
+                                    $_.Name -match 'chrome|firefox|msedge|iexplore|opera|brave' -and 
+                                    $_.MainWindowTitle -ne "" -and
+                                    $_.MainWindowTitle -notmatch 'New Tab|about:blank|^$'
+                                } | Select-Object Name, MainWindowTitle, @{
+                                    Name='Memory(MB)';
+                                    Expression={[math]::Round($_.WorkingSet64/1MB, 2)}
+                                }
+                                
+                                [PSCustomObject]@{
+                                    Computer = $env:COMPUTERNAME
+                                    LoggedInUser = if ($loggedUser) { $loggedUser } else { "No user" }
+                                    BrowserTabs = $browsers
+                                    TabCount = $browsers.Count
+                                }
+                            } -ErrorAction Stop
+                            
+                            $onlineCount++
+                            
+                            if ($browserData.LoggedInUser -ne "No user" -and $browserData.TabCount -gt 0) {
+                                foreach ($tab in $browserData.BrowserTabs) {
+                                    $logEntry = [PSCustomObject]@{
+                                        Timestamp = $currentTime
+                                        PC = $pc
+                                        User = $browserData.LoggedInUser
+                                        Browser = $tab.Name
+                                        PageTitle = $tab.MainWindowTitle
+                                        Memory = $tab.'Memory(MB)'
+                                    }
+                                    
+                                    # Check if this is a new search/page (not in last 5 entries)
+                                    $recentEntries = $searchLog | Select-Object -Last 5
+                                    $isDuplicate = $recentEntries | Where-Object {
+                                        $_.PC -eq $logEntry.PC -and 
+                                        $_.PageTitle -eq $logEntry.PageTitle
+                                    }
+                                    
+                                    if (-not $isDuplicate) {
+                                        $searchLog += $logEntry
+                                        $newSearches++
+                                        
+                                        # Display new search in real-time
+                                        $timestamp = $logEntry.Timestamp.ToString('HH:mm:ss')
+                                        $browserShort = $logEntry.Browser -replace 'chrome', 'Chrome' -replace 'firefox', 'Firefox' -replace 'msedge', 'Edge'
+                                        
+                                        # Color code based on content
+                                        $color = "Cyan"
+                                        $titleLower = $logEntry.PageTitle.ToLower()
+                                        
+                                        # Check for AI sites
+                                        if ($titleLower -match 'chatgpt|openai|claude|bard|copilot|gemini|perplexity') {
+                                            $color = "Red"
+                                            $marker = "🤖 AI"
+                                        }
+                                        # Check for social media
+                                        elseif ($titleLower -match 'facebook|instagram|twitter|tiktok|snapchat|reddit') {
+                                            $color = "Yellow"
+                                            $marker = "📱 Social"
+                                        }
+                                        # Check for video sites
+                                        elseif ($titleLower -match 'youtube|netflix|twitch|vimeo') {
+                                            $color = "Magenta"
+                                            $marker = "🎬 Video"
+                                        }
+                                        # Check for gaming
+                                        elseif ($titleLower -match 'roblox|minecraft|steam|game|play') {
+                                            $color = "DarkYellow"
+                                            $marker = "🎮 Game"
+                                        }
+                                        # Check for educational content
+                                        elseif ($titleLower -match 'stackoverflow|github|mdn|w3schools|tutorial|learn|documentation|docs') {
+                                            $color = "Green"
+                                            $marker = "📚 Study"
+                                        }
+                                        else {
+                                            $marker = "🌐 Web"
+                                        }
+                                        
+                                        Write-Host "[$timestamp] $marker " -ForegroundColor $color -NoNewline
+                                        Write-Host "$($logEntry.PC) - " -ForegroundColor White -NoNewline
+                                        Write-Host "$($logEntry.User) " -ForegroundColor Gray -NoNewline
+                                        Write-Host "[$browserShort]" -ForegroundColor DarkCyan -NoNewline
+                                        Write-Host " $($logEntry.PageTitle)" -ForegroundColor $color
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch {
+                    # Silently continue on errors
+                }
+            }
+            
+            # Display summary every 5 scans or if new searches found
+            if ($scanCount % 5 -eq 0 -or $newSearches -gt 0) {
+                Write-Host ""
+                Write-Host "──────────────────────────────────────────" -ForegroundColor DarkGray
+                Write-Host "Summary: Online: $onlineCount/$($Targets.Count) | " -NoNewline -ForegroundColor Gray
+                Write-Host "Total Logs: $($searchLog.Count) | " -NoNewline -ForegroundColor Gray
+                Write-Host "New This Scan: $newSearches" -ForegroundColor $(if ($newSearches -gt 0) { "Green" } else { "Gray" })
+                Write-Host "──────────────────────────────────────────" -ForegroundColor DarkGray
+                Write-Host ""
+            }
+            
+            # Countdown
+            for ($i = $RefreshInterval; $i -gt 0; $i--) {
+                $currentElapsed = (Get-Date) - $startTime
+                Write-Host "`rNext scan in $i seconds... | Elapsed: $($currentElapsed.ToString('hh\:mm\:ss')) | Logs: $($searchLog.Count)" -ForegroundColor Yellow -NoNewline
+                Start-Sleep -Seconds 1
+            }
+            Write-Host ""
+        }
+    }
+    catch [System.Management.Automation.PipelineStoppedException] {
+        # Ctrl+C pressed - save log
+        Write-Host ""
+        Write-Host ""
+        Write-Host "=============================================" -ForegroundColor Yellow
+        Write-Host "  MONITORING STOPPED - SAVING LOG...        " -ForegroundColor Yellow
+        Write-Host "=============================================" -ForegroundColor Yellow
+        Write-Host ""
+        
+        if ($searchLog.Count -gt 0) {
+            # Create Reports directory
+            $reportPath = Join-Path $script:scriptPath "Reports"
+            if (-not (Test-Path $reportPath)) {
+                New-Item -Path $reportPath -ItemType Directory | Out-Null
+            }
+            
+            $timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+            $logFile = Join-Path $reportPath "BrowserSearchLog_$timestamp.csv"
+            $summaryFile = Join-Path $reportPath "BrowserSearchSummary_$timestamp.txt"
+            
+            # Export detailed CSV
+            $searchLog | Export-Csv -Path $logFile -NoTypeInformation -Encoding UTF8
+            Write-Host "✓ Detailed log saved: $logFile" -ForegroundColor Green
+            
+            # Generate summary report
+            $summary = @"
+==================================================
+BROWSER SEARCH MONITORING REPORT
+==================================================
+Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+Domain: $script:targetDomain
+Monitoring Duration: $($elapsed.ToString('hh\:mm\:ss'))
+Total Scans: $scanCount
+Total Logs: $($searchLog.Count)
+
+==================================================
+ACTIVITY BY PC
+==================================================
+
+"@
+            
+            $pcGroups = $searchLog | Group-Object -Property PC | Sort-Object Count -Descending
+            foreach ($group in $pcGroups) {
+                $summary += "`n$($group.Name) - $($group.Count) page views`n"
+                $summary += "  User(s): $(($group.Group.User | Select-Object -Unique) -join ', ')`n"
+                $summary += "  Top Pages:`n"
+                $topPages = $group.Group | Group-Object PageTitle | Sort-Object Count -Descending | Select-Object -First 5
+                foreach ($page in $topPages) {
+                    $summary += "    - $($page.Name) ($($page.Count)x)`n"
+                }
+            }
+            
+            $summary += "`n`n"
+            $summary += "==================================================`n"
+            $summary += "ACTIVITY BY USER`n"
+            $summary += "==================================================`n`n"
+            
+            $userGroups = $searchLog | Where-Object { $_.User -ne "No user" } | Group-Object -Property User | Sort-Object Count -Descending
+            foreach ($group in $userGroups) {
+                $summary += "`n$($group.Name) - $($group.Count) page views`n"
+                $summary += "  PC(s): $(($group.Group.PC | Select-Object -Unique) -join ', ')`n"
+                $summary += "  Browsers: $(($group.Group.Browser | Select-Object -Unique) -join ', ')`n"
+            }
+            
+            $summary += "`n`n"
+            $summary += "==================================================`n"
+            $summary += "CATEGORY BREAKDOWN`n"
+            $summary += "==================================================`n`n"
+            
+            $aiSites = $searchLog | Where-Object { $_.PageTitle -match 'chatgpt|openai|claude|bard|copilot|gemini|perplexity' }
+            $socialSites = $searchLog | Where-Object { $_.PageTitle -match 'facebook|instagram|twitter|tiktok|snapchat|reddit' }
+            $videoSites = $searchLog | Where-Object { $_.PageTitle -match 'youtube|netflix|twitch|vimeo' }
+            $gamingSites = $searchLog | Where-Object { $_.PageTitle -match 'roblox|minecraft|steam|game|play' }
+            $studySites = $searchLog | Where-Object { $_.PageTitle -match 'stackoverflow|github|mdn|w3schools|tutorial|learn|documentation|docs' }
+            
+            $summary += "🤖 AI Sites: $($aiSites.Count)`n"
+            $summary += "📱 Social Media: $($socialSites.Count)`n"
+            $summary += "🎬 Video Sites: $($videoSites.Count)`n"
+            $summary += "🎮 Gaming Sites: $($gamingSites.Count)`n"
+            $summary += "📚 Educational: $($studySites.Count)`n"
+            $summary += "🌐 Other: $($searchLog.Count - $aiSites.Count - $socialSites.Count - $videoSites.Count - $gamingSites.Count - $studySites.Count)`n"
+            
+            $summary | Out-File -FilePath $summaryFile -Encoding UTF8
+            Write-Host "✓ Summary report saved: $summaryFile" -ForegroundColor Green
+            
+            Write-Host ""
+            Write-Host "Session Statistics:" -ForegroundColor Cyan
+            Write-Host "  Duration: $($elapsed.ToString('hh\:mm\:ss'))" -ForegroundColor White
+            Write-Host "  Total Logs: $($searchLog.Count)" -ForegroundColor White
+            Write-Host "  Unique PCs: $(($searchLog | Select-Object -ExpandProperty PC -Unique).Count)" -ForegroundColor White
+            Write-Host "  Unique Users: $(($searchLog | Where-Object { $_.User -ne 'No user' } | Select-Object -ExpandProperty User -Unique).Count)" -ForegroundColor White
+            Write-Host ""
+            Write-Host "Category Breakdown:" -ForegroundColor Cyan
+            Write-Host "  🤖 AI Sites: $($aiSites.Count)" -ForegroundColor $(if ($aiSites.Count -gt 0) { "Red" } else { "Gray" })
+            Write-Host "  📱 Social Media: $($socialSites.Count)" -ForegroundColor $(if ($socialSites.Count -gt 0) { "Yellow" } else { "Gray" })
+            Write-Host "  🎬 Video Sites: $($videoSites.Count)" -ForegroundColor $(if ($videoSites.Count -gt 0) { "Magenta" } else { "Gray" })
+            Write-Host "  🎮 Gaming: $($gamingSites.Count)" -ForegroundColor $(if ($gamingSites.Count -gt 0) { "DarkYellow" } else { "Gray" })
+            Write-Host "  📚 Educational: $($studySites.Count)" -ForegroundColor $(if ($studySites.Count -gt 0) { "Green" } else { "Gray" })
+            Write-Host ""
+        } else {
+            Write-Host "No search activity logged during this session." -ForegroundColor Yellow
+        }
+        
+        Write-Host "Press any key to return to menu..." -ForegroundColor Cyan
+        $null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    }
+    catch {
+        Write-Host ""
+        Write-Host "Error during monitoring: $($_.Exception.Message)" -ForegroundColor Red
+        Pause
+    }
+}
+
 function Get-StudentActivity {
     param(
         [Parameter(Mandatory=$false)]
