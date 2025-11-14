@@ -68,13 +68,19 @@ function Start-BrowserSearchMonitor {
                                 
                                 # Get all browser processes with window titles
                                 # Edge can be "msedge" or "MicrosoftEdge", Chrome is "chrome", Firefox is "firefox"
-                                $browsers = $allBrowserProcs | Where-Object { 
+                                $allBrowserWindows = $allBrowserProcs | Where-Object { 
                                     ($_.MainWindowTitle -ne $null) -and
                                     ($_.MainWindowTitle.Trim() -ne "") -and
-                                    ($_.MainWindowTitle -notmatch '^New Tab$|^about:blank|^Untitled|^$|^Settings|^Downloads|^Extensions')
+                                    ($_.MainWindowTitle -notmatch '^New Tab$|^about:blank|^Untitled|^$|^Settings|^Downloads|^Extensions|^DevTools|^Task Manager')
                                 } | Select-Object Name, MainWindowTitle, @{
                                     Name='Memory(MB)';
                                     Expression={[math]::Round($_.WorkingSet64/1MB, 2)}
+                                }
+                                
+                                # Group by MainWindowTitle to get unique tabs (Chrome/Edge create multiple processes per tab)
+                                $browsers = $allBrowserWindows | Group-Object MainWindowTitle | ForEach-Object {
+                                    # For each unique page title, take the one with highest memory (main process)
+                                    $_.Group | Sort-Object 'Memory(MB)' -Descending | Select-Object -First 1
                                 }
                                 
                                 [PSCustomObject]@{
@@ -83,13 +89,6 @@ function Start-BrowserSearchMonitor {
                                     BrowserTabs = $browsers
                                     TabCount = $browsers.Count
                                     TotalBrowserProcs = $allBrowserProcs.Count
-                                }
-                                
-                                [PSCustomObject]@{
-                                    Computer = $env:COMPUTERNAME
-                                    LoggedInUser = if ($loggedUser) { $loggedUser } else { "No user" }
-                                    BrowserTabs = $browsers
-                                    TabCount = $browsers.Count
                                 }
                             } -ErrorAction Stop
                             
@@ -134,30 +133,35 @@ function Start-BrowserSearchMonitor {
                                         $color = "Cyan"
                                         $titleLower = $logEntry.PageTitle.ToLower()
                                         
-                                        # Check for AI sites
-                                        if ($titleLower -match 'chatgpt|openai|claude|bard|copilot|gemini|perplexity') {
+                                        # Check for AI sites (expanded patterns)
+                                        if ($titleLower -match 'chatgpt|openai|claude|bard|copilot|gemini|perplexity|chat\.openai|character\.ai|ai chat|artificial intelligence') {
                                             $color = "Red"
                                             $marker = "🤖 AI"
                                         }
-                                        # Check for social media
-                                        elseif ($titleLower -match 'facebook|instagram|twitter|tiktok|snapchat|reddit') {
+                                        # Check for social media (expanded patterns to catch searches)
+                                        elseif ($titleLower -match 'facebook|instagram|twitter|tiktok|snapchat|reddit|fb\.com|ig |insta |tweet|snap|social media|pinterest|tumblr|linkedin') {
                                             $color = "Yellow"
                                             $marker = "📱 Social"
                                         }
                                         # Check for video sites
-                                        elseif ($titleLower -match 'youtube|netflix|twitch|vimeo') {
+                                        elseif ($titleLower -match 'youtube|netflix|twitch|vimeo|yt |watch video|streaming|video player') {
                                             $color = "Magenta"
                                             $marker = "🎬 Video"
                                         }
                                         # Check for gaming
-                                        elseif ($titleLower -match 'roblox|minecraft|steam|game|play') {
+                                        elseif ($titleLower -match 'roblox|minecraft|steam|game|play|gaming|genshin|valorant|league of legends|fortnite') {
                                             $color = "DarkYellow"
                                             $marker = "🎮 Game"
                                         }
                                         # Check for educational content
-                                        elseif ($titleLower -match 'stackoverflow|github|mdn|w3schools|tutorial|learn|documentation|docs') {
+                                        elseif ($titleLower -match 'stackoverflow|github|mdn|w3schools|tutorial|learn|documentation|docs|education|study|programming|code') {
                                             $color = "Green"
                                             $marker = "📚 Study"
+                                        }
+                                        # Check for shopping/entertainment
+                                        elseif ($titleLower -match 'shop|buy|amazon|ebay|lazada|shopee|shopping|cart|checkout|entertainment') {
+                                            $color = "DarkMagenta"
+                                            $marker = "🛒 Shop"
                                         }
                                         else {
                                             $marker = "🌐 Web"
@@ -268,18 +272,20 @@ ACTIVITY BY PC
             $summary += "CATEGORY BREAKDOWN`n"
             $summary += "==================================================`n`n"
             
-            $aiSites = $searchLog | Where-Object { $_.PageTitle -match 'chatgpt|openai|claude|bard|copilot|gemini|perplexity' }
-            $socialSites = $searchLog | Where-Object { $_.PageTitle -match 'facebook|instagram|twitter|tiktok|snapchat|reddit' }
-            $videoSites = $searchLog | Where-Object { $_.PageTitle -match 'youtube|netflix|twitch|vimeo' }
-            $gamingSites = $searchLog | Where-Object { $_.PageTitle -match 'roblox|minecraft|steam|game|play' }
-            $studySites = $searchLog | Where-Object { $_.PageTitle -match 'stackoverflow|github|mdn|w3schools|tutorial|learn|documentation|docs' }
+            $aiSites = $searchLog | Where-Object { $_.PageTitle -match 'chatgpt|openai|claude|bard|copilot|gemini|perplexity|chat\.openai|character\.ai|ai chat|artificial intelligence' }
+            $socialSites = $searchLog | Where-Object { $_.PageTitle -match 'facebook|instagram|twitter|tiktok|snapchat|reddit|fb\.com|ig |insta |tweet|snap|social media|pinterest|tumblr|linkedin' }
+            $videoSites = $searchLog | Where-Object { $_.PageTitle -match 'youtube|netflix|twitch|vimeo|yt |watch video|streaming|video player' }
+            $gamingSites = $searchLog | Where-Object { $_.PageTitle -match 'roblox|minecraft|steam|game|play|gaming|genshin|valorant|league of legends|fortnite' }
+            $studySites = $searchLog | Where-Object { $_.PageTitle -match 'stackoverflow|github|mdn|w3schools|tutorial|learn|documentation|docs|education|study|programming|code' }
+            $shopSites = $searchLog | Where-Object { $_.PageTitle -match 'shop|buy|amazon|ebay|lazada|shopee|shopping|cart|checkout|entertainment' }
             
             $summary += "🤖 AI Sites: $($aiSites.Count)`n"
             $summary += "📱 Social Media: $($socialSites.Count)`n"
             $summary += "🎬 Video Sites: $($videoSites.Count)`n"
             $summary += "🎮 Gaming Sites: $($gamingSites.Count)`n"
             $summary += "📚 Educational: $($studySites.Count)`n"
-            $summary += "🌐 Other: $($searchLog.Count - $aiSites.Count - $socialSites.Count - $videoSites.Count - $gamingSites.Count - $studySites.Count)`n"
+            $summary += "🛒 Shopping: $($shopSites.Count)`n"
+            $summary += "🌐 Other: $($searchLog.Count - $aiSites.Count - $socialSites.Count - $videoSites.Count - $gamingSites.Count - $studySites.Count - $shopSites.Count)`n"
             
             $summary | Out-File -FilePath $summaryFile -Encoding UTF8
             Write-Host "✓ Summary report saved: $summaryFile" -ForegroundColor Green
@@ -297,6 +303,7 @@ ACTIVITY BY PC
             Write-Host "  🎬 Video Sites: $($videoSites.Count)" -ForegroundColor $(if ($videoSites.Count -gt 0) { "Magenta" } else { "Gray" })
             Write-Host "  🎮 Gaming: $($gamingSites.Count)" -ForegroundColor $(if ($gamingSites.Count -gt 0) { "DarkYellow" } else { "Gray" })
             Write-Host "  📚 Educational: $($studySites.Count)" -ForegroundColor $(if ($studySites.Count -gt 0) { "Green" } else { "Gray" })
+            Write-Host "  🛒 Shopping: $($shopSites.Count)" -ForegroundColor $(if ($shopSites.Count -gt 0) { "DarkMagenta" } else { "Gray" })
             Write-Host ""
         } else {
             Write-Host "No search activity logged during this session." -ForegroundColor Yellow
