@@ -239,16 +239,17 @@ function Invoke-CustomPSCommand {
                         
                         if (-not [string]::IsNullOrWhiteSpace($result.Output)) {
                             Write-Host "    Output:" -ForegroundColor Cyan
-                            $outputLines = $result.Output -split "`n" | Select-Object -First 5
+                            # Display full output with indentation
+                            $outputLines = $result.Output -split "`n"
                             foreach ($line in $outputLines) {
                                 if (-not [string]::IsNullOrWhiteSpace($line)) {
-                                    Write-Host "      $line" -ForegroundColor Gray
+                                    Write-Host "      $line" -ForegroundColor White
                                 }
                             }
-                            if ($result.Output.Split("`n").Count -gt 5) {
-                                Write-Host "      ... (output truncated)" -ForegroundColor DarkGray
-                            }
+                        } else {
+                            Write-Host "    (No output)" -ForegroundColor Gray
                         }
+                        Write-Host ""
                     } else {
                         $failCount++
                         Write-Host "  ✗ $($result.Computer) - FAILED" -ForegroundColor Red
@@ -274,29 +275,5 @@ function Invoke-CustomPSCommand {
     Write-Host "Failed executions: $failCount" -ForegroundColor Red
     Write-Host ""
     
-    # Ask if user wants to see full output
-    if ($successCount -gt 0) {
-        $viewFull = Read-Host "Do you want to see full output from all PCs? (Y/N)"
-        
-        if ($viewFull -eq 'Y' -or $viewFull -eq 'y') {
-            Write-Host ""
-            Write-Host "===== FULL OUTPUT =====" -ForegroundColor Cyan
-            
-            foreach ($result in $results) {
-                if ($result.Success) {
-                    Write-Host ""
-                    Write-Host "===== $($result.Computer) =====" -ForegroundColor Green
-                    if (-not [string]::IsNullOrWhiteSpace($result.Output)) {
-                        Write-Host $result.Output -ForegroundColor White
-                    } else {
-                        Write-Host "(No output)" -ForegroundColor Gray
-                    }
-                    Write-Host "================================" -ForegroundColor DarkGray
-                }
-            }
-        }
-    }
-    
-    Write-Host ""
     Pause
 }
