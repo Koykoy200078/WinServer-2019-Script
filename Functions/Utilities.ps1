@@ -740,15 +740,29 @@ function Test-AndroidJavaEnvironment {
                             $report.AndroidHomeExists = $true
                             $report.AndroidHomeValue = $androidHome
                             
-                            # Check if it's the expected path (with or without expansion)
+                            # Check if it's the expected unexpanded path
                             $expectedPath = "%LOCALAPPDATA%\Android\Sdk"
                             if ($androidHome -eq $expectedPath) {
                                 $report.AndroidHomeValid = $true
                             } else {
                                 # Expand environment variables and check if path exists
                                 $expandedPath = [System.Environment]::ExpandEnvironmentVariables($androidHome)
+                                
+                                # Get current domain username
+                                $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+                                $username = $currentUser.Split('\')[-1]
+                                
+                                # Check if expanded path uses correct username
+                                $correctExpandedPath = "C:\Users\$username\AppData\Local\Android\Sdk"
+                                
                                 if (Test-Path $expandedPath) {
-                                    $report.AndroidHomeValid = $true
+                                    # Valid if path exists AND uses correct username
+                                    if ($expandedPath -eq $correctExpandedPath -or $androidHome -eq $expectedPath) {
+                                        $report.AndroidHomeValid = $true
+                                    } else {
+                                        # Path exists but uses wrong username (e.g., PC-6 instead of pc6)
+                                        $report.AndroidHomeValid = $false
+                                    }
                                 }
                             }
                         }
@@ -756,11 +770,28 @@ function Test-AndroidJavaEnvironment {
                         # Check if platform-tools in Path
                         $machinePath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
                         $platformTools = "%LOCALAPPDATA%\Android\Sdk\platform-tools"
-                        $platformToolsExpanded = "$env:LOCALAPPDATA\Android\Sdk\platform-tools"
                         
-                        # Check both unexpanded and expanded versions
-                        if ($machinePath -like "*$platformTools*" -or $machinePath -like "*$platformToolsExpanded*") {
+                        # Get current domain username for validation
+                        $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+                        $username = $currentUser.Split('\')[-1]
+                        $correctPlatformPath = "C:\Users\$username\AppData\Local\Android\Sdk\platform-tools"
+                        
+                        # Check if platform-tools exists in Path
+                        if ($machinePath -like "*$platformTools*") {
+                            # Using unexpanded format - VALID
                             $report.AndroidPathExists = $true
+                        } else {
+                            # Check if using expanded path
+                            if ($machinePath -like "*$correctPlatformPath*") {
+                                # Uses expanded path with correct username - should convert to unexpanded
+                                $report.AndroidPathExists = $false
+                            } elseif ($machinePath -match "C:\\Users\\[^\\]+\\AppData\\Local\\Android\\Sdk\\platform-tools") {
+                                # Uses expanded path with wrong username
+                                $report.AndroidPathExists = $false
+                            } else {
+                                # Not in path at all
+                                $report.AndroidPathExists = $false
+                            }
                         }
                         
                         # Check JAVA_HOME
@@ -875,18 +906,34 @@ function Test-AndroidJavaEnvironment {
                             
                             $fixed = $false
                             
-                            # Fix ANDROID_HOME (use unexpanded format)
-                            if ($fixAndroid) {
+                            # Check if current ANDROID_HOME is using expanded path with wrong username
+                            $currentAndroidHome = [System.Environment]::GetEnvironmentVariable("ANDROID_HOME", "Machine")
+                            $needsAndroidFix = $fixAndroid
+                            
+                            # If ANDROID_HOME has expanded path with computer name instead of domain username
+                            if ($currentAndroidHome -match "C:\\Users\\[^\\]+\\AppData\\Local\\Android\\Sdk") {
+                                $needsAndroidFix = $true
+                            }
+                            
+                            # Fix ANDROID_HOME (always use unexpanded format)
+                            if ($needsAndroidFix) {
                                 $androidSdkPath = "%LOCALAPPDATA%\Android\Sdk"
                                 [System.Environment]::SetEnvironmentVariable("ANDROID_HOME", $androidSdkPath, "Machine")
                                 Write-Host "  Set ANDROID_HOME to: $androidSdkPath"
                                 $fixed = $true
                             }
                             
-                            # Fix platform-tools in Path (use unexpanded format)
-                            if ($fixAndroidPath) {
+                            # Check if Path contains expanded Android path with wrong username
+                            $currentPath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+                            $needsPathFix = $fixAndroidPath
+                            
+                            if ($currentPath -match "C:\\Users\\[^\\]+\\AppData\\Local\\Android\\Sdk\\platform-tools") {
+                                $needsPathFix = $true
+                            }
+                            
+                            # Fix platform-tools in Path (always use unexpanded format)
+                            if ($needsPathFix) {
                                 $platformToolsPath = "%LOCALAPPDATA%\Android\Sdk\platform-tools"
-                                $currentPath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
                                 
                                 # Remove all Android paths (both expanded and unexpanded formats)
                                 $pathArray = $currentPath -split ";" | Where-Object { 
