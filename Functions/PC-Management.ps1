@@ -25,14 +25,24 @@ function Get-AllPCStatus {
                         $srcDisplay = $src
                     }
 
-                    # Get IP addresses (IPv4 only)
-                    $ipAddresses = Get-NetIPAddress -AddressFamily IPv4 | 
-                        Where-Object { $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.254.*" } |
-                        Select-Object -ExpandProperty IPAddress
+                    # Get primary IPv4 address (physical adapter only, excluding virtual/loopback)
+                    $primaryIP = Get-NetIPAddress -AddressFamily IPv4 | 
+                        Where-Object { 
+                            $_.IPAddress -notlike "127.*" -and 
+                            $_.IPAddress -notlike "169.254.*" -and
+                            $_.PrefixOrigin -ne "WellKnown" -and
+                            $_.SuffixOrigin -ne "Link"
+                        } |
+                        Sort-Object -Property InterfaceIndex |
+                        Select-Object -First 1 -ExpandProperty IPAddress
+
+                    if (-not $primaryIP) {
+                        $primaryIP = "No IP configured"
+                    }
 
                     [PSCustomObject]@{
                         Computer = $env:COMPUTERNAME
-                        IPAddress = ($ipAddresses -join ", ")
+                        IPAddress = $primaryIP
                         DateTime = $date
                         TimeZone = $tz
                         Source   = $srcDisplay
