@@ -115,10 +115,12 @@ function Start-BrowserSearchMonitor {
                                     }
                                     
                                     # Check if this is a new search/page (not in last 5 entries)
-                                    $recentEntries = $searchLog | Select-Object -Last 5
+                                    # Only skip if EXACT same title on SAME PC within last 3 entries (not 5)
+                                    $recentEntries = $searchLog | Select-Object -Last 3
                                     $isDuplicate = $recentEntries | Where-Object {
                                         $_.PC -eq $logEntry.PC -and 
-                                        $_.PageTitle -eq $logEntry.PageTitle
+                                        $_.PageTitle -eq $logEntry.PageTitle -and
+                                        ($currentTime - $_.Timestamp).TotalSeconds -lt 10
                                     }
                                     
                                     if (-not $isDuplicate) {
@@ -134,32 +136,32 @@ function Start-BrowserSearchMonitor {
                                         $titleLower = $logEntry.PageTitle.ToLower()
                                         
                                         # Check for AI sites (expanded patterns)
-                                        if ($titleLower -match 'chatgpt|openai|claude|bard|copilot|gemini|perplexity|chat\.openai|character\.ai|ai chat|artificial intelligence') {
+                                        if ($titleLower -match 'chatgpt|openai|claude|bard|copilot|gemini|perplexity|character\.ai|ai chat|artificial intelligence|gpt-|llm') {
                                             $color = "Red"
                                             $marker = "🤖 AI"
                                         }
-                                        # Check for social media (expanded patterns to catch searches)
-                                        elseif ($titleLower -match 'facebook|instagram|twitter|tiktok|snapchat|reddit|fb\.com|ig |insta |tweet|snap|social media|pinterest|tumblr|linkedin') {
+                                        # Check for social media (expanded patterns to catch searches and partial matches)
+                                        elseif ($titleLower -match 'facebook|instagram|twitter|tiktok|snapchat|reddit|fb\.com|fb com|ig |insta|tweet|snap|social|pinterest|tumblr|linkedin|whatsapp|telegram|discord') {
                                             $color = "Yellow"
                                             $marker = "📱 Social"
                                         }
                                         # Check for video sites
-                                        elseif ($titleLower -match 'youtube|netflix|twitch|vimeo|yt |watch video|streaming|video player') {
+                                        elseif ($titleLower -match 'youtube|netflix|twitch|vimeo|dailymotion|video|streaming|watch') {
                                             $color = "Magenta"
                                             $marker = "🎬 Video"
                                         }
                                         # Check for gaming
-                                        elseif ($titleLower -match 'roblox|minecraft|steam|game|play|gaming|genshin|valorant|league of legends|fortnite') {
+                                        elseif ($titleLower -match 'roblox|minecraft|steam|gaming|genshin|valorant|league of legends|fortnite|game|pubg|cod|call of duty') {
                                             $color = "DarkYellow"
                                             $marker = "🎮 Game"
                                         }
                                         # Check for educational content
-                                        elseif ($titleLower -match 'stackoverflow|github|mdn|w3schools|tutorial|learn|documentation|docs|education|study|programming|code') {
+                                        elseif ($titleLower -match 'stackoverflow|github|gitlab|mdn|w3schools|tutorial|learn|documentation|docs|education|study|programming|code|course|class') {
                                             $color = "Green"
                                             $marker = "📚 Study"
                                         }
                                         # Check for shopping/entertainment
-                                        elseif ($titleLower -match 'shop|buy|amazon|ebay|lazada|shopee|shopping|cart|checkout|entertainment') {
+                                        elseif ($titleLower -match 'shop|buy|amazon|ebay|lazada|shopee|shopping|cart|checkout|store|purchase|price') {
                                             $color = "DarkMagenta"
                                             $marker = "🛒 Shop"
                                         }
@@ -272,12 +274,12 @@ ACTIVITY BY PC
             $summary += "CATEGORY BREAKDOWN`n"
             $summary += "==================================================`n`n"
             
-            $aiSites = $searchLog | Where-Object { $_.PageTitle -match 'chatgpt|openai|claude|bard|copilot|gemini|perplexity|chat\.openai|character\.ai|ai chat|artificial intelligence' }
-            $socialSites = $searchLog | Where-Object { $_.PageTitle -match 'facebook|instagram|twitter|tiktok|snapchat|reddit|fb\.com|ig |insta |tweet|snap|social media|pinterest|tumblr|linkedin' }
-            $videoSites = $searchLog | Where-Object { $_.PageTitle -match 'youtube|netflix|twitch|vimeo|yt |watch video|streaming|video player' }
-            $gamingSites = $searchLog | Where-Object { $_.PageTitle -match 'roblox|minecraft|steam|game|play|gaming|genshin|valorant|league of legends|fortnite' }
-            $studySites = $searchLog | Where-Object { $_.PageTitle -match 'stackoverflow|github|mdn|w3schools|tutorial|learn|documentation|docs|education|study|programming|code' }
-            $shopSites = $searchLog | Where-Object { $_.PageTitle -match 'shop|buy|amazon|ebay|lazada|shopee|shopping|cart|checkout|entertainment' }
+            $aiSites = $searchLog | Where-Object { $_.PageTitle -match '(?i)(chatgpt|openai|claude|bard|copilot|gemini|perplexity|character\.ai|ai chat|artificial intelligence|gpt-|llm)' }
+            $socialSites = $searchLog | Where-Object { $_.PageTitle -match '(?i)(facebook|instagram|twitter|tiktok|snapchat|reddit|fb\.com|fb com|ig |insta|tweet|snap|social|pinterest|tumblr|linkedin|whatsapp|telegram|discord)' }
+            $videoSites = $searchLog | Where-Object { $_.PageTitle -match '(?i)(youtube|netflix|twitch|vimeo|dailymotion|video|streaming|watch)' }
+            $gamingSites = $searchLog | Where-Object { $_.PageTitle -match '(?i)(roblox|minecraft|steam|gaming|genshin|valorant|league of legends|fortnite|game|pubg|cod|call of duty)' }
+            $studySites = $searchLog | Where-Object { $_.PageTitle -match '(?i)(stackoverflow|github|gitlab|mdn|w3schools|tutorial|learn|documentation|docs|education|study|programming|code|course|class)' }
+            $shopSites = $searchLog | Where-Object { $_.PageTitle -match '(?i)(shop|buy|amazon|ebay|lazada|shopee|shopping|cart|checkout|store|purchase|price)' }
             
             $summary += "🤖 AI Sites: $($aiSites.Count)`n"
             $summary += "📱 Social Media: $($socialSites.Count)`n"
