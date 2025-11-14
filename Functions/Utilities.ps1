@@ -1041,14 +1041,23 @@ function Clear-TempFiles {
                             Computer = $env:COMPUTERNAME
                             Success = $false
                             WindowsTempFiles = 0
+                            WindowsTempFilesDeleted = 0
                             WindowsTempSize = 0
+                            WindowsTempSizeFreed = 0
                             UserTempFiles = 0
+                            UserTempFilesDeleted = 0
                             UserTempSize = 0
+                            UserTempSizeFreed = 0
                             PrefetchFiles = 0
+                            PrefetchFilesDeleted = 0
                             PrefetchSize = 0
+                            PrefetchSizeFreed = 0
                             TotalFiles = 0
+                            TotalFilesDeleted = 0
                             TotalSize = 0
+                            TotalSizeFreed = 0
                             Errors = @()
+                            LockedFiles = 0
                         }
                         
                         try {
@@ -1056,15 +1065,37 @@ function Clear-TempFiles {
                             $windowsTempPath = "C:\Windows\Temp"
                             if (Test-Path $windowsTempPath) {
                                 try {
-                                    $beforeWinTemp = Get-ChildItem -Path $windowsTempPath -Recurse -Force -ErrorAction SilentlyContinue
+                                    $beforeWinTemp = Get-ChildItem -Path $windowsTempPath -Recurse -Force -ErrorAction SilentlyContinue | 
+                                        Where-Object { -not $_.PSIsContainer }
                                     $winTempSize = ($beforeWinTemp | Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum
                                     $winTempCount = ($beforeWinTemp | Measure-Object).Count
                                     
-                                    Get-ChildItem -Path $windowsTempPath -Recurse -Force -ErrorAction SilentlyContinue | 
-                                        Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
-                                    
                                     $report.WindowsTempFiles = $winTempCount
-                                    $report.WindowsTempSize = [math]::Round($winTempSize / 1MB, 2)
+                                    $report.WindowsTempSize = [math]::Round(($winTempSize / 1MB), 2)
+                                    
+                                    # Delete files one by one to track success
+                                    $deletedCount = 0
+                                    $deletedSize = 0
+                                    foreach ($item in $beforeWinTemp) {
+                                        try {
+                                            $size = $item.Length
+                                            Remove-Item -Path $item.FullName -Force -ErrorAction Stop
+                                            $deletedCount++
+                                            $deletedSize += $size
+                                        } catch {
+                                            $report.LockedFiles++
+                                        }
+                                    }
+                                    
+                                    $report.WindowsTempFilesDeleted = $deletedCount
+                                    $report.WindowsTempSizeFreed = [math]::Round(($deletedSize / 1MB), 2)
+                                    
+                                    # Clean empty directories
+                                    Get-ChildItem -Path $windowsTempPath -Recurse -Force -Directory -ErrorAction SilentlyContinue | 
+                                        Sort-Object -Property FullName -Descending | 
+                                        Where-Object { (Get-ChildItem -Path $_.FullName -Force -ErrorAction SilentlyContinue).Count -eq 0 } | 
+                                        Remove-Item -Force -ErrorAction SilentlyContinue
+                                        
                                 } catch {
                                     $report.Errors += "Windows Temp: $($_.Exception.Message)"
                                 }
@@ -1074,15 +1105,37 @@ function Clear-TempFiles {
                             $userTempPath = $env:TEMP
                             if (Test-Path $userTempPath) {
                                 try {
-                                    $beforeUserTemp = Get-ChildItem -Path $userTempPath -Recurse -Force -ErrorAction SilentlyContinue
+                                    $beforeUserTemp = Get-ChildItem -Path $userTempPath -Recurse -Force -ErrorAction SilentlyContinue | 
+                                        Where-Object { -not $_.PSIsContainer }
                                     $userTempSize = ($beforeUserTemp | Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum
                                     $userTempCount = ($beforeUserTemp | Measure-Object).Count
                                     
-                                    Get-ChildItem -Path $userTempPath -Recurse -Force -ErrorAction SilentlyContinue | 
-                                        Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
-                                    
                                     $report.UserTempFiles = $userTempCount
-                                    $report.UserTempSize = [math]::Round($userTempSize / 1MB, 2)
+                                    $report.UserTempSize = [math]::Round(($userTempSize / 1MB), 2)
+                                    
+                                    # Delete files one by one
+                                    $deletedCount = 0
+                                    $deletedSize = 0
+                                    foreach ($item in $beforeUserTemp) {
+                                        try {
+                                            $size = $item.Length
+                                            Remove-Item -Path $item.FullName -Force -ErrorAction Stop
+                                            $deletedCount++
+                                            $deletedSize += $size
+                                        } catch {
+                                            $report.LockedFiles++
+                                        }
+                                    }
+                                    
+                                    $report.UserTempFilesDeleted = $deletedCount
+                                    $report.UserTempSizeFreed = [math]::Round(($deletedSize / 1MB), 2)
+                                    
+                                    # Clean empty directories
+                                    Get-ChildItem -Path $userTempPath -Recurse -Force -Directory -ErrorAction SilentlyContinue | 
+                                        Sort-Object -Property FullName -Descending | 
+                                        Where-Object { (Get-ChildItem -Path $_.FullName -Force -ErrorAction SilentlyContinue).Count -eq 0 } | 
+                                        Remove-Item -Force -ErrorAction SilentlyContinue
+                                        
                                 } catch {
                                     $report.Errors += "User Temp: $($_.Exception.Message)"
                                 }
@@ -1096,18 +1149,35 @@ function Clear-TempFiles {
                                     $prefetchSize = ($beforePrefetch | Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum
                                     $prefetchCount = ($beforePrefetch | Measure-Object).Count
                                     
-                                    Get-ChildItem -Path $prefetchPath -Filter "*.pf" -Force -ErrorAction SilentlyContinue | 
-                                        Remove-Item -Force -ErrorAction SilentlyContinue
-                                    
                                     $report.PrefetchFiles = $prefetchCount
-                                    $report.PrefetchSize = [math]::Round($prefetchSize / 1MB, 2)
+                                    $report.PrefetchSize = [math]::Round(($prefetchSize / 1MB), 2)
+                                    
+                                    # Delete files one by one
+                                    $deletedCount = 0
+                                    $deletedSize = 0
+                                    foreach ($item in $beforePrefetch) {
+                                        try {
+                                            $size = $item.Length
+                                            Remove-Item -Path $item.FullName -Force -ErrorAction Stop
+                                            $deletedCount++
+                                            $deletedSize += $size
+                                        } catch {
+                                            $report.LockedFiles++
+                                        }
+                                    }
+                                    
+                                    $report.PrefetchFilesDeleted = $deletedCount
+                                    $report.PrefetchSizeFreed = [math]::Round(($deletedSize / 1MB), 2)
+                                    
                                 } catch {
                                     $report.Errors += "Prefetch: $($_.Exception.Message)"
                                 }
                             }
                             
                             $report.TotalFiles = $report.WindowsTempFiles + $report.UserTempFiles + $report.PrefetchFiles
+                            $report.TotalFilesDeleted = $report.WindowsTempFilesDeleted + $report.UserTempFilesDeleted + $report.PrefetchFilesDeleted
                             $report.TotalSize = $report.WindowsTempSize + $report.UserTempSize + $report.PrefetchSize
+                            $report.TotalSizeFreed = $report.WindowsTempSizeFreed + $report.UserTempSizeFreed + $report.PrefetchSizeFreed
                             $report.Success = $true
                             
                         } catch {
@@ -1121,13 +1191,17 @@ function Clear-TempFiles {
                     
                     if ($result.Success) {
                         $successCount++
-                        $totalFilesDeleted += $result.TotalFiles
-                        $totalSpaceFreed += $result.TotalSize
+                        $totalFilesDeleted += $result.TotalFilesDeleted
+                        $totalSpaceFreed += $result.TotalSizeFreed
                         
-                        Write-Host "  ✓ $($result.Computer) - Cleaned $($result.TotalFiles) files ($($result.TotalSize) MB)" -ForegroundColor Green
-                        Write-Host "      Windows Temp: $($result.WindowsTempFiles) files ($($result.WindowsTempSize) MB)" -ForegroundColor DarkGray
-                        Write-Host "      User Temp: $($result.UserTempFiles) files ($($result.UserTempSize) MB)" -ForegroundColor DarkGray
-                        Write-Host "      Prefetch: $($result.PrefetchFiles) files ($($result.PrefetchSize) MB)" -ForegroundColor DarkGray
+                        Write-Host "  ✓ $($result.Computer) - Found: $($result.TotalFiles) files ($($result.TotalSize) MB) | DELETED: $($result.TotalFilesDeleted) files ($($result.TotalSizeFreed) MB)" -ForegroundColor Green
+                        Write-Host "      Windows Temp: Found $($result.WindowsTempFiles) ($($result.WindowsTempSize) MB) | Deleted $($result.WindowsTempFilesDeleted) ($($result.WindowsTempSizeFreed) MB)" -ForegroundColor DarkGray
+                        Write-Host "      User Temp: Found $($result.UserTempFiles) ($($result.UserTempSize) MB) | Deleted $($result.UserTempFilesDeleted) ($($result.UserTempSizeFreed) MB)" -ForegroundColor DarkGray
+                        Write-Host "      Prefetch: Found $($result.PrefetchFiles) ($($result.PrefetchSize) MB) | Deleted $($result.PrefetchFilesDeleted) ($($result.PrefetchSizeFreed) MB)" -ForegroundColor DarkGray
+                        
+                        if ($result.LockedFiles -gt 0) {
+                            Write-Host "      ⚠ Locked/In-use files: $($result.LockedFiles) files could not be deleted" -ForegroundColor Yellow
+                        }
                         
                         if ($result.Errors.Count -gt 0) {
                             Write-Host "      Warnings:" -ForegroundColor Yellow
@@ -1170,20 +1244,20 @@ function Clear-TempFiles {
     # Detailed breakdown table
     if ($cleanupResults.Count -gt 0) {
         Write-Host "DETAILED BREAKDOWN:" -ForegroundColor Yellow
-        Write-Host "PC Name       | Files | Size (MB) | Win Temp | User Temp | Prefetch | Status" -ForegroundColor Yellow
-        Write-Host "------------- | ----- | --------- | -------- | --------- | -------- | ------" -ForegroundColor DarkGray
+        Write-Host "PC Name       | Found | Deleted | Locked | Size Found | Size Freed | Status" -ForegroundColor Yellow
+        Write-Host "------------- | ----- | ------- | ------ | ---------- | ---------- | ------" -ForegroundColor DarkGray
         
         foreach ($result in $cleanupResults | Sort-Object Computer) {
             $pcName = $result.Computer.PadRight(13)
-            $files = $result.TotalFiles.ToString().PadRight(5)
-            $size = $result.TotalSize.ToString("0.00").PadRight(9)
-            $winTemp = $result.WindowsTempFiles.ToString().PadRight(8)
-            $userTemp = $result.UserTempFiles.ToString().PadRight(9)
-            $prefetch = $result.PrefetchFiles.ToString().PadRight(8)
+            $found = $result.TotalFiles.ToString().PadRight(5)
+            $deleted = $result.TotalFilesDeleted.ToString().PadRight(7)
+            $locked = $result.LockedFiles.ToString().PadRight(6)
+            $sizeFound = "$($result.TotalSize) MB".PadRight(10)
+            $sizeFreed = "$($result.TotalSizeFreed) MB".PadRight(10)
             $status = if ($result.Success) { "✓ OK" } else { "✗ FAIL" }
             $color = if ($result.Success) { "Green" } else { "Red" }
             
-            Write-Host "$pcName | $files | $size | $winTemp | $userTemp | $prefetch | $status" -ForegroundColor $color
+            Write-Host "$pcName | $found | $deleted | $locked | $sizeFound | $sizeFreed | $status" -ForegroundColor $color
         }
     }
     
