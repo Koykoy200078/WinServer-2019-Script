@@ -703,3 +703,236 @@ function Show-AllHostsFiles {
     Write-Host ""
     Pause
 }
+
+function Test-AndroidJavaEnvironment {
+    Write-Host "===== ANDROID & JAVA ENVIRONMENT CHECK =====" -ForegroundColor Cyan
+    Write-Host "Checking ANDROID_HOME and JAVA_HOME on all domain PCs..." -ForegroundColor Yellow
+    Write-Host "Target Domain: $script:targetDomain" -ForegroundColor Cyan
+    Write-Host ""
+    
+    $targets = foreach ($i in 1..35) { "PC-$i" }
+    $results = @()
+    
+    foreach ($pc in $targets) {
+        Write-Host "Checking $pc..." -ForegroundColor Gray
+        try {
+            if (Test-WSMan -ComputerName $pc -ErrorAction Stop) {
+                $isDomainMember = Test-DomainMembership -ComputerName $pc
+                
+                if ($isDomainMember) {
+                    $result = Invoke-Command -ComputerName $pc -Credential $script:cred -ScriptBlock {
+                        $report = @{
+                            Computer = $env:COMPUTERNAME
+                            AndroidHomeExists = $false
+                            AndroidHomeValue = ""
+                            AndroidHomeValid = $false
+                            AndroidPathExists = $false
+                            JavaHomeExists = $false
+                            JavaHomeValue = ""
+                            JavaHomeValid = $false
+                            Fixed = $false
+                            Errors = @()
+                        }
+                        
+                        # Check ANDROID_HOME
+                        $androidHome = [System.Environment]::GetEnvironmentVariable("ANDROID_HOME", "Machine")
+                        if ($androidHome) {
+                            $report.AndroidHomeExists = $true
+                            $report.AndroidHomeValue = $androidHome
+                            
+                            # Expand environment variables
+                            $expandedPath = [System.Environment]::ExpandEnvironmentVariables($androidHome)
+                            if (Test-Path $expandedPath) {
+                                $report.AndroidHomeValid = $true
+                            }
+                        }
+                        
+                        # Check if platform-tools in Path
+                        $machinePath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+                        $platformTools = "$env:LOCALAPPDATA\Android\Sdk\platform-tools"
+                        if ($machinePath -like "*$platformTools*" -or $machinePath -like "*%LOCALAPPDATA%\Android\Sdk\platform-tools*") {
+                            $report.AndroidPathExists = $true
+                        }
+                        
+                        # Check JAVA_HOME
+                        $javaHome = [System.Environment]::GetEnvironmentVariable("JAVA_HOME", "Machine")
+                        if ($javaHome) {
+                            $report.JavaHomeExists = $true
+                            $report.JavaHomeValue = $javaHome
+                            
+                            # Expand and check if valid
+                            $expandedJavaPath = [System.Environment]::ExpandEnvironmentVariables($javaHome)
+                            if (Test-Path $expandedJavaPath) {
+                                # Check if bin folder exists with java.exe
+                                $javaBin = Join-Path $expandedJavaPath "bin\java.exe"
+                                if (Test-Path $javaBin) {
+                                    $report.JavaHomeValid = $true
+                                }
+                            }
+                        }
+                        
+                        return $report
+                    }
+                    
+                    $results += $result
+                    
+                    # Display status
+                    Write-Host "  $($result.Computer):" -ForegroundColor White
+                    
+                    # ANDROID_HOME status
+                    if ($result.AndroidHomeValid) {
+                        Write-Host "    ANDROID_HOME: " -NoNewline
+                        Write-Host "VALID" -ForegroundColor Green
+                        Write-Host "      Path: $($result.AndroidHomeValue)" -ForegroundColor Gray
+                    } elseif ($result.AndroidHomeExists) {
+                        Write-Host "    ANDROID_HOME: " -NoNewline
+                        Write-Host "INVALID PATH" -ForegroundColor Red
+                        Write-Host "      Path: $($result.AndroidHomeValue)" -ForegroundColor Gray
+                    } else {
+                        Write-Host "    ANDROID_HOME: " -NoNewline
+                        Write-Host "NOT SET" -ForegroundColor Yellow
+                    }
+                    
+                    # Platform-tools in Path
+                    if ($result.AndroidPathExists) {
+                        Write-Host "    Platform-tools: " -NoNewline
+                        Write-Host "IN PATH" -ForegroundColor Green
+                    } else {
+                        Write-Host "    Platform-tools: " -NoNewline
+                        Write-Host "NOT IN PATH" -ForegroundColor Yellow
+                    }
+                    
+                    # JAVA_HOME status
+                    if ($result.JavaHomeValid) {
+                        Write-Host "    JAVA_HOME: " -NoNewline
+                        Write-Host "VALID" -ForegroundColor Green
+                        Write-Host "      Path: $($result.JavaHomeValue)" -ForegroundColor Gray
+                    } elseif ($result.JavaHomeExists) {
+                        Write-Host "    JAVA_HOME: " -NoNewline
+                        Write-Host "INVALID PATH" -ForegroundColor Red
+                        Write-Host "      Path: $($result.JavaHomeValue)" -ForegroundColor Gray
+                    } else {
+                        Write-Host "    JAVA_HOME: " -NoNewline
+                        Write-Host "NOT SET" -ForegroundColor Yellow
+                    }
+                    
+                } else {
+                    Write-Host "  $pc`: NOT in $script:targetDomain domain - SKIPPING" -ForegroundColor Red
+                }
+            }
+        }
+        catch {
+            Write-Host "  $pc`: OFFLINE or unreachable" -ForegroundColor DarkGray
+        }
+    }
+    
+    # Summary
+    Write-Host ""
+    Write-Host "===== SUMMARY =====" -ForegroundColor Cyan
+    $needsAndroidFix = $results | Where-Object { -not $_.AndroidHomeValid -or -not $_.AndroidPathExists }
+    $needsJavaFix = $results | Where-Object { -not $_.JavaHomeValid }
+    
+    Write-Host "Total PCs checked: $($results.Count)" -ForegroundColor White
+    Write-Host "ANDROID_HOME issues: $($needsAndroidFix.Count)" -ForegroundColor $(if ($needsAndroidFix.Count -gt 0) { "Yellow" } else { "Green" })
+    Write-Host "JAVA_HOME issues: $($needsJavaFix.Count)" -ForegroundColor $(if ($needsJavaFix.Count -gt 0) { "Yellow" } else { "Green" })
+    
+    if ($needsAndroidFix.Count -gt 0 -or $needsJavaFix.Count -gt 0) {
+        Write-Host ""
+        Write-Host "Do you want to fix the issues? (Y/N)" -ForegroundColor Yellow
+        $fix = Read-Host
+        
+        if ($fix -eq 'Y' -or $fix -eq 'y') {
+            Write-Host ""
+            Write-Host "Fixing environment variables..." -ForegroundColor Cyan
+            
+            foreach ($result in $results) {
+                $needsFix = (-not $result.AndroidHomeValid) -or (-not $result.AndroidPathExists) -or (-not $result.JavaHomeValid)
+                
+                if ($needsFix) {
+                    Write-Host "Fixing $($result.Computer)..." -ForegroundColor Yellow
+                    
+                    try {
+                        Invoke-Command -ComputerName $result.Computer -Credential $script:cred -ScriptBlock {
+                            param($fixAndroid, $fixAndroidPath, $fixJava)
+                            
+                            $fixed = $false
+                            
+                            # Fix ANDROID_HOME
+                            if ($fixAndroid) {
+                                $androidSdkPath = "%LOCALAPPDATA%\Android\Sdk"
+                                [System.Environment]::SetEnvironmentVariable("ANDROID_HOME", $androidSdkPath, "Machine")
+                                Write-Host "  Set ANDROID_HOME to: $androidSdkPath"
+                                $fixed = $true
+                            }
+                            
+                            # Fix platform-tools in Path
+                            if ($fixAndroidPath) {
+                                $platformToolsPath = "%LOCALAPPDATA%\Android\Sdk\platform-tools"
+                                $currentPath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+                                
+                                # Remove old Android paths if any
+                                $pathArray = $currentPath -split ";" | Where-Object { $_ -notlike "*Android\Sdk\platform-tools*" }
+                                
+                                # Add new path
+                                $newPath = ($pathArray + $platformToolsPath) -join ";"
+                                [System.Environment]::SetEnvironmentVariable("Path", $newPath, "Machine")
+                                Write-Host "  Added platform-tools to Path"
+                                $fixed = $true
+                            }
+                            
+                            # Note about JAVA_HOME - we can't auto-fix without knowing Java location
+                            if ($fixJava) {
+                                Write-Host "  JAVA_HOME needs manual verification - checking common locations..."
+                                
+                                # Check common Java locations
+                                $commonJavaPaths = @(
+                                    "C:\Program Files\Java\jdk-*",
+                                    "C:\Program Files\Java\jre-*",
+                                    "C:\Program Files (x86)\Java\jdk-*",
+                                    "C:\Program Files (x86)\Java\jre-*",
+                                    "C:\Program Files\Microsoft\jdk-*",
+                                    "C:\Program Files\Eclipse Adoptium\jdk-*"
+                                )
+                                
+                                $foundJava = $null
+                                foreach ($pattern in $commonJavaPaths) {
+                                    $javaDir = Get-ChildItem -Path ($pattern -replace "\\jdk-\*", "") -Filter "jdk-*" -Directory -ErrorAction SilentlyContinue | 
+                                        Sort-Object Name -Descending | 
+                                        Select-Object -First 1
+                                    
+                                    if ($javaDir -and (Test-Path (Join-Path $javaDir.FullName "bin\java.exe"))) {
+                                        $foundJava = $javaDir.FullName
+                                        break
+                                    }
+                                }
+                                
+                                if ($foundJava) {
+                                    [System.Environment]::SetEnvironmentVariable("JAVA_HOME", $foundJava, "Machine")
+                                    Write-Host "  Set JAVA_HOME to: $foundJava"
+                                    $fixed = $true
+                                } else {
+                                    Write-Host "  WARNING: Could not find Java installation automatically" -ForegroundColor Red
+                                }
+                            }
+                            
+                            return $fixed
+                            
+                        } -ArgumentList (-not $result.AndroidHomeValid), (-not $result.AndroidPathExists), (-not $result.JavaHomeValid)
+                        
+                        Write-Host "  $($result.Computer) - FIXED" -ForegroundColor Green
+                        
+                    } catch {
+                        Write-Host "  $($result.Computer) - FAILED: $_" -ForegroundColor Red
+                    }
+                }
+            }
+            
+            Write-Host ""
+            Write-Host "Environment variables updated!" -ForegroundColor Green
+            Write-Host "NOTE: PCs may need to restart for changes to take effect." -ForegroundColor Yellow
+        }
+    }
+    
+    Write-Host ""
+    Pause
+}

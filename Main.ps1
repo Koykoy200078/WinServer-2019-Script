@@ -130,6 +130,7 @@ function Show-Menu {
     Write-Host "  20. Export MySQL Database from a single PC"
     Write-Host "  21. Export MySQL Databases from a range of PCs"
     Write-Host "  22. Export MySQL Databases from ALL PCs"
+    Write-Host "  27. Check/Fix Android & Java Environment Variables" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "█ LAB MONITORING" -ForegroundColor Green
     Write-Host "  25. Student Activity Monitor - See what students are doing" -ForegroundColor Cyan
@@ -322,6 +323,9 @@ do {
         '22' {
             $targets = foreach ($i in 1..35) { "PC-$i" }
             Export-MySQLDatabases -Targets $targets -ExportType "ALL PCs" -ScriptPath $scriptPath
+        }
+        '27' {
+            Test-AndroidJavaEnvironment
         }
         
         # ===== LAB MONITORING =====
