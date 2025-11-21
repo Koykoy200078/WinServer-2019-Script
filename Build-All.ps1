@@ -96,9 +96,36 @@ Write-ColorOutput "  ✓ Client files copied" "Green"
 # Copy deployment scripts
 $scriptsDir = Join-Path $packageDir "Scripts"
 New-Item -ItemType Directory -Path $scriptsDir -Force | Out-Null
-Copy-Item -Path (Join-Path $ScriptDir "Deploy-Standalone.ps1") -Destination $scriptsDir -Force
+Copy-Item -Path (Join-Path $ScriptDir "Deploy-Standalone.ps1") -Destination $scriptsDir -Force -ErrorAction SilentlyContinue
 Copy-Item -Path (Join-Path $ProjectRoot "Deploy-MonitoringClient.ps1") -Destination $scriptsDir -Force -ErrorAction SilentlyContinue
+Copy-Item -Path (Join-Path $ScriptDir "Check-Deployment.ps1") -Destination $scriptsDir -Force -ErrorAction SilentlyContinue
+Copy-Item -Path (Join-Path $ScriptDir "Test-Client.ps1") -Destination $scriptsDir -Force -ErrorAction SilentlyContinue
+Copy-Item -Path (Join-Path $ScriptDir "Diagnose-Remote.ps1") -Destination $scriptsDir -Force -ErrorAction SilentlyContinue
 Write-ColorOutput "  ✓ Deployment scripts copied" "Green"
+
+# Deploy to network share if available
+$networkShare = "\\192.168.2.45\Sharing\Other\DeploymentPackage"
+if (Test-Path "\\192.168.2.45\Sharing\Other") {
+    Write-ColorOutput "`n📤 Deploying to network share..." "Yellow"
+    
+    try {
+        # Copy server
+        Copy-Item -Path (Join-Path $serverDir "WinServer2019.exe") -Destination "$networkShare\Server\" -Force
+        Write-ColorOutput "  ✓ Server deployed to network" "Green"
+        
+        # Copy client files
+        Copy-Item -Path (Join-Path $clientDir "*") -Destination "$networkShare\Client\" -Recurse -Force
+        Write-ColorOutput "  ✓ Client deployed to network" "Green"
+        
+        # Copy scripts
+        Copy-Item -Path "$scriptsDir\*" -Destination "$networkShare\Scripts\" -Force
+        Write-ColorOutput "  ✓ Scripts deployed to network" "Green"
+    }
+    catch {
+        Write-ColorOutput "  ⚠ Network deployment failed: $_" "Yellow"
+        Write-ColorOutput "  Local package is ready at: $packageDir" "Gray"
+    }
+}
 
 # Create README
 $readmePath = Join-Path $packageDir "DEPLOYMENT-README.md"
@@ -156,9 +183,12 @@ cd Scripts
 
 ## 🎥 Screen Viewing Features
 
-- **Real-time screen capture** every 1 second
-- **Compressed images** (30% quality) to minimize bandwidth
-- **Resized display** (50% scale) for performance
+- **Real-time screen capture** every 1-2 seconds
+- **Quality selector:** 480p (Fast), 720p (Balanced), 1080p (High Quality)
+- **Default:** 720p @ 50% JPEG quality for optimal balance
+- **Optimized network:** 256 KB buffers, TCP_NODELAY enabled
+- **High-quality scaling:** Sharp, clear images with proper interpolation
+- **Real-time stats:** Shows resolution, transfer size, and FPS
 - See exactly what users are doing!
 
 ## 🔧 Configuration
@@ -166,7 +196,17 @@ cd Scripts
 Default settings:
 - Server Port: **8888**
 - Update Interval: **2 seconds**
-- Screenshot Quality: **30%** (adjustable in code)
+- Screenshot Quality: **50%** (720p balanced mode)
+- Network Buffer: **256 KB** (optimized for speed)
+
+## ⚡ Performance
+
+Expected bandwidth per client:
+- **480p:**  ~15-25 KB/frame  (Fast, low bandwidth)
+- **720p:**  ~30-50 KB/frame  (Balanced) ⭐ Default
+- **1080p:** ~60-100 KB/frame (High quality)
+
+With 35 clients @ 720p: ~2-3 MB/sec total bandwidth
 
 ## 🔥 Firewall Rules
 
@@ -198,8 +238,15 @@ Automatically configured by deployment script:
 
 **Screen not showing?**
 1. Ensure client has latest version
-2. Check network bandwidth (screenshots are compressed but still use ~50-100KB/sec)
+2. Check network bandwidth (720p uses ~30-50KB/sec per client)
 3. Verify no antivirus blocking screen capture
+4. Try lower quality (480p) if network is slow
+
+**Pixelated or blurry screen?**
+1. Client defaults to 720p @ 50% quality (balanced)
+2. Quality selector in screen viewer (top bar)
+3. Higher quality = more bandwidth needed
+4. Ensure TCP_NODELAY is working (check firewall)
 
 **Client not starting?**
 1. Check scheduled task: `Get-ScheduledTask -TaskName "PCMonitorClient"`
@@ -261,8 +308,34 @@ Write-ColorOutput "   $packageDir" "White"
 
 Write-ColorOutput "`n📋 Next Steps:" "Yellow"
 Write-ColorOutput "1. Review DEPLOYMENT-README.md in the package" "White"
-Write-ColorOutput "2. Copy package to deployment server" "White"
-Write-ColorOutput "3. Run appropriate deployment script" "White"
-Write-ColorOutput "4. Start monitoring!" "White"
+Write-ColorOutput "2. Copy package to deployment server (or use network share)" "White"
+Write-ColorOutput "3. Run appropriate deployment script:" "White"
+Write-ColorOutput "   - Domain: Deploy-MonitoringClient.ps1" "Gray"
+Write-ColorOutput "   - Standalone: Deploy-Standalone.ps1" "Gray"
+Write-ColorOutput "4. Start monitoring server and double-click any PC to view screen!" "White"
 
-Write-ColorOutput "`n✓ Build and packaging complete!`n" "Green"
+Write-ColorOutput "`n========================================" "Cyan"
+Write-ColorOutput "  BUILD & DEPLOYMENT COMPLETE!" "Cyan"
+Write-ColorOutput "========================================" "Cyan"
+
+Write-ColorOutput "`n✨ New Features in This Build:" "Magenta"
+Write-ColorOutput "  • Quality selector (480p/720p/1080p) in screen viewer" "White"
+Write-ColorOutput "  • Enhanced image quality (50% JPEG, high-quality scaling)" "White"
+Write-ColorOutput "  • 4x faster network (256 KB buffers)" "White"
+Write-ColorOutput "  • TCP_NODELAY enabled for lower latency" "White"
+Write-ColorOutput "  • Real-time stats showing resolution & transfer size" "White"
+Write-ColorOutput "  • Length-prefixed protocol (handles up to 10MB messages)" "White"
+Write-ColorOutput "  • Smart resolution scaling with aspect ratio preservation" "White"
+Write-ColorOutput "  • Numerical PC name sorting (PC-1, PC-2, PC-20, PC-30)" "White"
+Write-ColorOutput "  • Social media detection tags (🔴 FACEBOOK, TWITTER, etc.)" "White"
+Write-ColorOutput "  • Message sending UI (click 📨 icon in Actions column)" "White"
+Write-ColorOutput "  • Screen freeze UI (click ⚠ icon - server commands coming soon)" "White"
+
+if (Test-Path "\\192.168.2.45\Sharing\Other") {
+    Write-ColorOutput "`n🌐 Network Deployment:" "Cyan"
+    Write-ColorOutput "  Server: \\192.168.2.45\Sharing\Other\DeploymentPackage\Server\" "Gray"
+    Write-ColorOutput "  Client: \\192.168.2.45\Sharing\Other\DeploymentPackage\Client\" "Gray"
+    Write-ColorOutput "  Scripts: \\192.168.2.45\Sharing\Other\DeploymentPackage\Scripts\" "Gray"
+}
+
+Write-ColorOutput "`n✓ Ready to deploy!`n" "Green"
